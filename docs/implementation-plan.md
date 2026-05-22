@@ -27,25 +27,29 @@ There are four deliverables.
 3. **The skill file** — a markdown skill the user installs on their client.
 4. **Documentation** — README, getting-started, and the protocol spec.
 
-Each is built in `multiplayer/` under the unicity repo.
+Each lives in the `multisphere` repository.
 
 ## Repository layout for this work
 
 ```
-multiplayer/
-├── concept.md
-├── product-plan.md
-├── implementation-plan.md
+multisphere/
+├── README.md
+├── CLAUDE.md
+├── .gitignore
+├── docs/
+│   ├── concept.md
+│   ├── product-plan.md
+│   ├── implementation-plan.md
+│   ├── getting-started.md
+│   └── protocol.md
 ├── workspace-template/        # cloneable template for a new workspace
-├── mcp-server/                # the local MCP server
+├── mcp-server/                # the local MCP server (multisphere-mcp)
 │   ├── src/
 │   ├── package.json
 │   └── README.md
-├── skill/
-│   └── multiplayer-agent.md   # the skill file
-└── docs/
-    ├── getting-started.md
-    └── protocol.md
+└── skill/
+    ├── README.md
+    └── multisphere/SKILL.md   # the installable skill
 ```
 
 ## 1. Workspace template
@@ -74,23 +78,23 @@ workspace-template/
 ### Stack
 
 - TypeScript on Node 20+.
-- Distribution via npm. Invoked through `npx multiplayer-agents-mcp` so users don't need a global install.
+- Distribution via npm as `multisphere-mcp`. Invoked through `npx multisphere-mcp` so users don't need a global install.
 - Git operations through `simple-git` or direct `child_process` calls to the system `git` binary.
 - Search through `ripgrep` if available, fallback to a Node implementation.
 
 ### Config
 
-Per-user config at `~/.multiplayer-agents/config.json`:
+Per-user config at `~/.multisphere/config.json`:
 
 ```json
 {
   "agent_id": "jamie-claude-desktop",
   "agent_name": "Jamie",
-  "agent_email": "jamie@unicity.io",
+  "agent_email": "jamie@unicity-labs.com",
   "workspaces": {
     "sif-pitch": {
-      "remote": "git@github.com:unicity/sif-pitch-workspace.git",
-      "local_path": "/Users/jamie/multiplayer/sif-pitch"
+      "remote": "git@github.com:unicity-labs/sif-pitch-workspace.git",
+      "local_path": "/Users/jamie/multisphere/sif-pitch"
     }
   },
   "active_workspace": "sif-pitch"
@@ -153,14 +157,14 @@ Commit uses the configured agent name and email as author. Commit messages shoul
 
 ## 3. Skill file
 
-Filename: `skill/multiplayer-agent.md`.
+Filename: `skill/multisphere/SKILL.md`. The skill folder is what you install into your client.
 
 Structure:
 
 ```markdown
 ---
-name: multiplayer-agent
-description: Coordinate work in a shared git workspace with other agents. Use when joining a multiplayer workspace, when the user asks you to check what's new, or when working on shared deliverables.
+name: multisphere
+description: Coordinate work in a shared git workspace with other agents. Use when joining a multisphere workspace, when the user asks you to check what's new, or when working on shared deliverables.
 ---
 
 # Working in a multiplayer workspace
@@ -308,7 +312,7 @@ After the SIF run.
 When picking up this plan:
 
 1. Read `concept.md`, then `product-plan.md`, then this file.
-2. Start in `multiplayer/mcp-server/` — scaffold the Node project.
+2. Start in `mcp-server/` — scaffold the Node project as `multisphere-mcp`.
 3. Implement Phase 1 tools first. Get to "one commit, one pull" before adding anything else.
 4. Build `workspace-template/` in parallel — it's mostly file scaffolding.
 5. Write the skill file last, once the tools it depends on are real.

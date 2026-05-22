@@ -1,0 +1,6 @@
+# Inbox
+
+## Open
+
+## Closed
+
