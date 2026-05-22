@@ -1,6 +1,6 @@
 # Multisphere protocol
 
-This is the wire-level spec for the journal, inbox, pointers, and commit conventions that every agent must respect in a multisphere workspace. The skill (`skill/multisphere/SKILL.md`) tells an agent *what* to do; this document specifies *how* the files look on disk so any client can join without breaking the convention.
+This is the wire-level spec for the journal, inbox, pointers, and commit conventions that every agent must respect in a multisphere workspace. The skill (`skills/a2a/SKILL.md`, shipped in the `multisphere` plugin) tells an agent *what* to do; this document specifies *how* the files look on disk so any client can join without breaking the convention.
 
 ## Agent identity
 

@@ -2,67 +2,65 @@
 
 Multiplayer agents over a shared git workspace. My agent works for me. Your agent works for you. They share a drop board — a git repo with an opinionated layout and a journal protocol — where work product lands. No agent-to-agent chat. Async coordination through artifacts.
 
-This repo is the source for three things:
+Multisphere is shipped as a **Claude Code plugin**: one install drops in the `a2a` skill (the drop-board protocol) and wires up the `multisphere-mcp` MCP server.
 
-1. **`mcp-server/`** — `multisphere-mcp`, the local Node/TypeScript MCP server that wraps git, filesystem, and the protocol helpers.
-2. **`workspace-template/`** — the opinionated repo layout you clone (or copy) to start a new workspace.
-3. **`skill/`** — the installable skill that teaches an agent the entry/exit protocol.
+## Install (Claude Code)
 
-## Why
-
-Single-player agents are done. Everyone's got MCP, everyone's got tool calling. The next move is multiplayer — and the team-chat-for-robots architectures everyone tried first are a token nightmare and a hallucination nightmare. Multisphere bets on the simpler thing: agents read each other's *outputs* through a shared repo, and humans stay in the loop on what triggers what.
-
-See [`docs/concept.md`](docs/concept.md) for the longer story. [`docs/product-plan.md`](docs/product-plan.md) is the product brief. [`docs/implementation-plan.md`](docs/implementation-plan.md) is the build spec this repo implements.
-
-## Quick start
-
-```bash
-# 1. install
-npx multisphere-mcp@latest --version
-
-# 2. configure ~/.multisphere/config.json with your agent_id / name / email
-
-# 3. wire the server into your MCP client (Claude Code, Claude Desktop, Cowork)
-#    See mcp-server/README.md for the client config block.
-
-# 4. install the skill — see skill/README.md
-
-# 5. seed a workspace from workspace-template/, push it, and have your agent
-#    run workspace_init against the remote.
+```text
+/plugin marketplace add unicity-labs/multisphere
+/plugin install multisphere@multisphere
 ```
 
-End-to-end walkthrough: [`docs/getting-started.md`](docs/getting-started.md).
+That's it. The plugin's `.mcp.json` boots `multisphere-mcp` and the `a2a` skill activates whenever you're in a workspace. Skill invokes as `/multisphere:a2a` if you want it explicit.
+
+> **Local dev (S3 remote, pre-GitHub):** clone this repo, build the MCP server once, then load the plugin directly:
+> ```bash
+> cd mcp-server && npm install && npm run build && cd ..
+> claude --plugin-dir "$(pwd)"
+> ```
+
+## Install (other clients)
+
+Claude Desktop and Cowork don't have plugin support yet, but every piece is reusable:
+
+- **Skill:** copy `skills/a2a/` into `~/.claude/skills/a2a/` (or paste `SKILL.md` into project instructions).
+- **MCP server:** wire `multisphere-mcp` (or the path `mcp-server/dist/index.js`) into the client's MCP config. See [`mcp-server/README.md`](mcp-server/README.md).
+
+## What it does
+
+Single-player agents are done. Everyone has MCP, everyone has tool calling. The next move is multiplayer — and the team-chat-for-robots architectures everyone tried first are a token nightmare and a hallucination nightmare. Multisphere bets on the simpler thing: agents read each other's *outputs* through a shared repo, and humans stay in the loop on what triggers what.
+
+A run looks like this. You tell your agent to drop research in `research/`. The agent does the work, writes a journal entry, commits, pushes. Tomorrow Mike opens his agent — "what's new?" His agent pulls, reads the journal tail, summarizes. He says "build a slide from Jamie's research." Mike's agent does it, journals, pushes. No agent ever talks to another agent.
+
+See [`docs/concept.md`](docs/concept.md) for the longer story. [`docs/product-plan.md`](docs/product-plan.md) is the product brief. [`docs/implementation-plan.md`](docs/implementation-plan.md) is the build spec.
 
 ## Repository layout
 
 ```
 .
-├── README.md                       # this file
-├── CLAUDE.md                       # repo-level instructions for Claude Code
-├── docs/
-│   ├── concept.md                  # the underlying idea
-│   ├── product-plan.md             # product brief
-│   ├── implementation-plan.md      # build spec
-│   ├── getting-started.md          # 10-minute setup walkthrough
-│   └── protocol.md                 # wire spec for journal/inbox/pointers
+├── .claude-plugin/
+│   ├── plugin.json                 # Claude Code plugin manifest
+│   └── marketplace.json            # single-plugin marketplace (this repo)
+├── .mcp.json                       # MCP server config bundled with the plugin
+├── skills/
+│   └── a2a/SKILL.md                # the drop-board protocol (invokes as /multisphere:a2a)
 ├── mcp-server/                     # multisphere-mcp (TypeScript, Node 20+)
-│   ├── src/
-│   ├── package.json
-│   └── README.md
-├── skill/
-│   ├── README.md                   # install instructions
-│   └── multisphere/SKILL.md        # the skill body
-└── workspace-template/             # cloneable seed for a new workspace
-    ├── README.md
-    ├── journal.md
-    ├── inbox.md
-    ├── research/  drafts/  comments/  decisions/  assets/  .pointers/
+├── workspace-template/             # cloneable seed for a new workspace
+├── docs/
+│   ├── concept.md
+│   ├── product-plan.md
+│   ├── implementation-plan.md
+│   ├── getting-started.md          # 10-min setup walkthrough
+│   └── protocol.md                 # wire spec for journal/inbox/pointers
+├── README.md
+└── CLAUDE.md
 ```
 
 ## What works today (v1)
 
-- `multisphere-mcp` exposes the full Phase 1 + Phase 2 tool surface from the implementation plan: workspace management, git ops (`fetch`, `pull`, `status`, `diff`, `log`, `add`, `commit`, `push`), filesystem ops scoped to the workspace (`read`, `write`, `list`, `search`), and protocol helpers (`journal_append`, `inbox_add`, `inbox_close`, `whats_new`).
-- The skill ships the entry/exit protocol, file formats, and error handling.
+- One-command Claude Code install via the plugin manifest.
+- `multisphere-mcp` exposes 20 tools: workspace × 4, git × 8, fs × 4, protocol × 4.
+- The `a2a` skill ships the entry/exit protocol, file formats, and error handling.
 - Pull is fast-forward only. Conflicts surface to the human, never silently merge.
 - Per-agent last-read pointers under `.pointers/`.
 

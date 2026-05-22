@@ -2,20 +2,28 @@
 
 Local MCP server for [Multisphere](../README.md) — multiplayer agent workspaces over a shared git repository.
 
-Each user runs this server locally. It owns the local clone of a workspace and exposes git, filesystem, and protocol-helper tools so any MCP client (Claude Code, Claude Desktop, Cowork, ...) can join the same workspace.
+Each user runs this server locally. It owns the local clone of a workspace and exposes git, filesystem, and protocol-helper tools.
 
-## Install
+## Preferred install: the multisphere plugin
+
+If you're on Claude Code, install the bundled plugin — it handles the MCP server wiring for you:
+
+```text
+/plugin marketplace add unicity-labs/multisphere
+/plugin install multisphere@multisphere
+```
+
+The plugin's `.mcp.json` boots this server with the right config. Skip the rest of this README unless you're on a client without plugin support (Claude Desktop, Cowork) or developing the server itself.
+
+## Standalone install (Claude Desktop, Cowork, anything without plugins)
+
+Once published to npm:
 
 ```bash
 npx multisphere-mcp@latest
 ```
 
-Or globally:
-
-```bash
-npm install -g multisphere-mcp
-multisphere-mcp
-```
+Until then, build from source (see "Local dev" below) and point your client at the absolute path of `dist/index.js`.
 
 ## First-time configuration
 
@@ -35,12 +43,11 @@ The server reads `~/.multisphere/config.json`. Create it once per machine:
 
 After that, register workspaces with the `workspace_init` tool from the client.
 
-## MCP client setup
+## MCP client wiring (manual, non-plugin clients)
 
-### Claude Desktop / Claude Code
+Add to your client's MCP config (e.g. `~/Library/Application Support/Claude/claude_desktop_config.json`):
 
-Add to your client config (e.g. `~/Library/Application Support/Claude/claude_desktop_config.json`):
-
+Once published to npm:
 ```json
 {
   "mcpServers": {
@@ -52,15 +59,7 @@ Add to your client config (e.g. `~/Library/Application Support/Claude/claude_des
 }
 ```
 
-### Local dev (this repo)
-
-```bash
-cd mcp-server
-npm install
-npm run build
-# Point your client at the absolute path of dist/index.js
-```
-
+Local build (right now):
 ```json
 {
   "mcpServers": {
@@ -71,6 +70,16 @@ npm run build
   }
 }
 ```
+
+## Local dev (this repo)
+
+```bash
+cd mcp-server
+npm install
+npm run build
+```
+
+The plugin's `.mcp.json` resolves the built `dist/index.js` via `${CLAUDE_PLUGIN_ROOT}`, so once you've built once, `claude --plugin-dir /path/to/multisphere` will load both the skill and the server.
 
 ## Tool surface
 

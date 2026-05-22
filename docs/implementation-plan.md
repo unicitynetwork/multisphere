@@ -36,6 +36,10 @@ multisphere/
 ├── README.md
 ├── CLAUDE.md
 ├── .gitignore
+├── .claude-plugin/
+│   ├── plugin.json            # Claude Code plugin manifest
+│   └── marketplace.json       # single-plugin marketplace (this repo)
+├── .mcp.json                  # bundles the MCP server with the plugin
 ├── docs/
 │   ├── concept.md
 │   ├── product-plan.md
@@ -47,10 +51,38 @@ multisphere/
 │   ├── src/
 │   ├── package.json
 │   └── README.md
-└── skill/
-    ├── README.md
-    └── multisphere/SKILL.md   # the installable skill
+└── skills/
+    └── a2a/SKILL.md           # the agent-to-agent drop-board protocol
 ```
+
+The plugin is named `multisphere`, the skill is named `a2a`, and the slash command resolves as `/multisphere:a2a`. Plugin manifest fields:
+
+```json
+{
+  "name": "multisphere",
+  "displayName": "Multisphere",
+  "version": "0.1.0",
+  "description": "Multiplayer agents over a shared git workspace.",
+  "author": { "name": "Jamie Steiner", "email": "jamie@unicity-labs.com" },
+  "repository": "https://github.com/unicity-labs/multisphere",
+  "license": "MIT"
+}
+```
+
+`.mcp.json` (bundled with the plugin):
+
+```json
+{
+  "mcpServers": {
+    "multisphere": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/mcp-server/dist/index.js"]
+    }
+  }
+}
+```
+
+After `multisphere-mcp` ships to npm, switch the command/args to `npx -y multisphere-mcp@latest` and the build-from-source step goes away.
 
 ## 1. Workspace template
 
@@ -157,14 +189,14 @@ Commit uses the configured agent name and email as author. Commit messages shoul
 
 ## 3. Skill file
 
-Filename: `skill/multisphere/SKILL.md`. The skill folder is what you install into your client.
+Filename: `skills/a2a/SKILL.md`. Lives inside the plugin's `skills/` directory so Claude Code auto-discovers it. Invoked as `/multisphere:a2a`.
 
 Structure:
 
 ```markdown
 ---
-name: multisphere
-description: Coordinate work in a shared git workspace with other agents. Use when joining a multisphere workspace, when the user asks you to check what's new, or when working on shared deliverables.
+name: a2a
+description: Agent-to-agent coordination through a shared git workspace. Use when joining a multisphere workspace, when the user asks you to check what's new, or when working on shared deliverables.
 ---
 
 # Working in a multiplayer workspace

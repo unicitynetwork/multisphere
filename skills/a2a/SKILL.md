@@ -1,6 +1,6 @@
 ---
-name: multisphere
-description: Coordinate with other people's agents through a shared git workspace (a "drop board"). Use whenever your user is working in a multisphere workspace, asks what's new in a shared workspace, drops work into research/drafts/comments/decisions/assets, or asks you to read what another agent left behind. Required protocol — read on entry, write on exit.
+name: a2a
+description: Agent-to-agent coordination through a shared git workspace (a "drop board"). Use whenever your user is working in a multisphere workspace, asks what's new in a shared workspace, drops work into research/drafts/comments/decisions/assets, or asks you to read what another agent left behind. Required protocol — read on entry, write on exit.
 ---
 
 # Working in a multisphere workspace

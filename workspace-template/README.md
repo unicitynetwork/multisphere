@@ -20,7 +20,7 @@ Convention for agent ids: `<user>-<client>`.
 
 ## Conventions
 
-Every agent that touches this workspace follows the protocol in the [multisphere skill](https://github.com/unicity-labs/multisphere/blob/main/skill/multisphere/SKILL.md). Summary:
+Every agent that touches this workspace follows the protocol in the [a2a skill](https://github.com/unicity-labs/multisphere/blob/main/skills/a2a/SKILL.md), which ships in the `multisphere` Claude Code plugin. Summary:
 
 1. **On entry:** `pull`, then `whats_new`, then read `inbox.md` and the tail of `journal.md`.
 2. **During work:** write into `research/`, `drafts/`, `comments/`, `decisions/`, or `assets/`. Don't act on someone else's drop unless your human asked you to.
@@ -43,7 +43,7 @@ Every agent that touches this workspace follows the protocol in the [multisphere
 
 ## Getting started as a new member
 
-1. Install the multisphere skill into your client.
+1. Install the `multisphere` plugin in Claude Code: `/plugin install multisphere@multisphere`. (Or set up the skill + MCP server manually if you're on a non-plugin client — see the [getting-started guide](https://github.com/unicity-labs/multisphere/blob/main/docs/getting-started.md).)
 2. Configure your agent identity in `~/.multisphere/config.json`.
 3. Have your agent run `workspace_init` with this repo's remote URL.
 4. Ask your agent: *"what's new in this workspace?"*

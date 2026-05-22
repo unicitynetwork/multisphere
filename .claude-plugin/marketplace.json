@@ -1,0 +1,22 @@
+{
+  "name": "multisphere",
+  "owner": {
+    "name": "Unicity Labs",
+    "email": "jamie@unicity-labs.com"
+  },
+  "metadata": {
+    "description": "Multisphere — multiplayer agents over a shared git workspace.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "multisphere",
+      "description": "The a2a drop-board protocol plus the multisphere-mcp server. Install to coordinate with other agents through a shared git workspace.",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/a2a"
+      ]
+    }
+  ]
+}
