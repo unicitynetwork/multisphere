@@ -2,7 +2,10 @@
   "mcpServers": {
     "workspace": {
       "command": "npx",
-      "args": ["-y", "multisphere-mcp@latest"]
+      "args": ["-y", "multisphere-mcp@latest"],
+      "env": {
+        "MULTISPHERE_CLIENT": ""
+      }
     }
   }
 }

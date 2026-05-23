@@ -91,9 +91,11 @@ export async function resolveIdentity(): Promise<Identity> {
     return { agent_id: envId, agent_name: envName, agent_email: envEmail };
   }
 
-  // Env var wins over auto-detection. Falls back to whatever the MCP
-  // initialize handshake reported (cowork → "cowork", claude-code → "claude-code", etc.)
-  const client = process.env.MULTISPHERE_CLIENT ?? detectedClient;
+  // Env var wins over auto-detection (and lets users in Cowork override the
+  // detected client via the connector UI). Empty string is treated as unset
+  // so .mcp.json can declare an empty placeholder field without forcing it.
+  const envClient = process.env.MULTISPHERE_CLIENT?.trim();
+  const client = (envClient && envClient.length > 0) ? envClient : detectedClient;
 
   if (client) {
     const perClient = await readJson<IdentityFile>(clientIdentityPath(client));
@@ -200,9 +202,10 @@ export function getActiveWorkspace(
 
 export function assertIdentity(cfg: MultisphereConfig): void {
   if (!cfg.agent_id || !cfg.agent_name || !cfg.agent_email) {
-    const envClient = process.env.MULTISPHERE_CLIENT;
-    const client = envClient ?? detectedClient;
-    const sourceNote = envClient
+    const envClient = process.env.MULTISPHERE_CLIENT?.trim();
+    const envSet = envClient && envClient.length > 0;
+    const client = envSet ? envClient : detectedClient;
+    const sourceNote = envSet
       ? `MULTISPHERE_CLIENT=${envClient}`
       : detectedClient
         ? `auto-detected client="${detectedClient}" from MCP clientInfo`

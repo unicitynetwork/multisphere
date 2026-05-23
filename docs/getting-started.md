@@ -58,15 +58,34 @@ Create `~/.multisphere/identity.json`:
 }
 ```
 
-That's it. Done. Both clients work, no env vars needed.
+The server detects which client called it (via the MCP `initialize` handshake's `clientInfo.name`) and combines that with your `user_slug` to derive the agent_id automatically. Mapping:
 
-The server detects which client called it (via the MCP `initialize` handshake's `clientInfo.name`) and combines that with your `user_slug` to derive the agent_id automatically:
+- Bare-CLI **Claude Code** → `jamie-claude-code`
+- Cowork-hosted **Claude Code** *(default)* → `jamie-claude-code` too — because under the hood it's the same client. **If you want it distinct, see "Override per surface" below.**
+- Other MCP hosts → `jamie-<slugified-client-name>`
 
-- In **Claude Code** → `jamie-claude-code`
-- In **Cowork** → `jamie-cowork`
-- In other MCP hosts → `jamie-<slugified-client-name>`
+### Override per surface (Cowork ≠ Claude Code CLI)
 
-Cowork and Claude Desktop both identify themselves as `claude-ai` in the MCP handshake; the server normalizes both to `cowork`.
+Cowork hosts its own Claude Code agent. By default it identifies as `claude-code` over MCP — so from the server's view, your bare-CLI Claude Code and your Cowork-hosted Claude Code look identical. If you treat them as different "agents" from a UX perspective and want their commits/journals signed differently:
+
+**Cowork:** Customize → Plugins → Multisphere → Connectors → **workspace** → Environment Variables → set:
+
+```
+MULTISPHERE_CLIENT = cowork
+```
+
+The plugin's `.mcp.json` already declares `MULTISPHERE_CLIENT` with an empty value precisely so this field appears editable in Cowork's UI. Empty/whitespace value = use auto-detect; set value = override. After saving, restart Cowork.
+
+**Claude Code CLI** (if you also want to override there):
+
+```bash
+# In ~/.zshrc or ~/.bashrc
+export MULTISPHERE_CLIENT=claude-code   # or any value you want
+```
+
+Restart your shell + Claude Code session. The shell env wins over `.mcp.json`'s empty default.
+
+After overrides, your IDs become e.g. `jamie-cowork` in Cowork and `jamie-claude-code` in the bare CLI — distinct.
 
 ### Per-client overrides (if you need them)
 

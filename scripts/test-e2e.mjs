@@ -248,6 +248,24 @@ check(
   'MULTISPHERE_CLIENT env beats detected client',
   envBeatsAuto.agent_id === 'jamie-claude-code',
 );
+
+// 15. Empty MULTISPHERE_CLIENT (the .mcp.json placeholder) is treated as unset
+//     and falls through to the detected client — so users in Cowork get the
+//     detected value automatically unless they fill in the field explicitly.
+setDetectedClient('claude-ai');
+process.env.MULTISPHERE_CLIENT = '';
+const emptyFallsThrough = await resolveIdentity();
+check(
+  'empty MULTISPHERE_CLIENT falls through to detected (jamie-cowork)',
+  emptyFallsThrough.agent_id === 'jamie-cowork',
+);
+process.env.MULTISPHERE_CLIENT = '   '; // whitespace only
+const whitespaceFallsThrough = await resolveIdentity();
+check(
+  'whitespace-only MULTISPHERE_CLIENT also treated as unset',
+  whitespaceFallsThrough.agent_id === 'jamie-cowork',
+);
+
 delete process.env.MULTISPHERE_CLIENT;
 setDetectedClient(undefined);
 
