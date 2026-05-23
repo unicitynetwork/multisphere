@@ -35,3 +35,14 @@ build/
 coverage/
 .build/
 *.mcpb
+
+# Local backups (e.g. .git.backup-pre-scrub)
+.git.backup*
+*.backup
+*.backup-*
+
+# Private / never-commit content
+docs/unicity-product*
+docs/*-transcript.txt
+docs/*.transcript.txt
+docs/private/
