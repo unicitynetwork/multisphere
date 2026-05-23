@@ -45,8 +45,39 @@ export function normalizeClientName(name: string): string {
   return slug;
 }
 
+/**
+ * macOS-specific Cowork detection.
+ *
+ * Cowork ships as Claude.app (`com.anthropic.claudefordesktop`). When macOS
+ * launches it, the OS sets `XPC_SERVICE_NAME` to a string containing
+ * `claudefordesktop` and that value propagates to every child process Cowork
+ * spawns — including the multisphere MCP server.
+ *
+ * The bare Claude Code CLI launched from a terminal session inherits the
+ * terminal's XPC context instead, which doesn't contain `claudefordesktop`.
+ *
+ * Cowork hosts a Claude Code agent that identifies itself over MCP as
+ * `claude-code` — same as the bare CLI. Without this signal, we can't tell
+ * them apart. With it, Cowork-hosted Claude Code resolves to `cowork` and
+ * bare CLI resolves to `claude-code`, even though both send the same
+ * clientInfo.name.
+ */
+function isCoworkHostedEnvironment(): boolean {
+  const xpc = process.env.XPC_SERVICE_NAME ?? '';
+  return xpc.toLowerCase().includes('claudefordesktop');
+}
+
 export function setDetectedClient(name: string | undefined): void {
-  detectedClient = name ? normalizeClientName(name) : undefined;
+  if (!name) {
+    detectedClient = undefined;
+    return;
+  }
+  let normalized = normalizeClientName(name);
+  // Promote Cowork-hosted Claude Code → "cowork" via the XPC fingerprint.
+  if (normalized === 'claude-code' && isCoworkHostedEnvironment()) {
+    normalized = 'cowork';
+  }
+  detectedClient = normalized;
 }
 
 export function getDetectedClient(): string | undefined {

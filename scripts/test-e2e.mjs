@@ -233,12 +233,32 @@ check(
   cwAuto.agent_id === 'jamie-cowork',
 );
 
+delete process.env.XPC_SERVICE_NAME;
 setDetectedClient('claude-code');
 const ccAuto = await resolveIdentity();
 check(
-  'detected claude-code + user_slug → jamie-claude-code',
+  'detected claude-code (no XPC) + user_slug → jamie-claude-code',
   ccAuto.agent_id === 'jamie-claude-code',
 );
+
+// 13b. XPC fingerprint promotes claude-code → cowork when running under Cowork.
+process.env.XPC_SERVICE_NAME = 'application.com.anthropic.claudefordesktop.123.456';
+setDetectedClient('claude-code');
+const ccUnderCowork = await resolveIdentity();
+check(
+  'detected claude-code + XPC=claudefordesktop → jamie-cowork',
+  ccUnderCowork.agent_id === 'jamie-cowork',
+);
+
+// 13c. XPC fingerprint does NOT affect non-claude-code clients.
+process.env.XPC_SERVICE_NAME = 'application.com.anthropic.claudefordesktop.123.456';
+setDetectedClient('some-other-client');
+const otherUnderCowork = await resolveIdentity();
+check(
+  'XPC fingerprint does not promote unrelated clients',
+  otherUnderCowork.agent_id === 'jamie-some-other-client',
+);
+delete process.env.XPC_SERVICE_NAME;
 
 // 14. Env var still wins over detected client.
 setDetectedClient('claude-ai');

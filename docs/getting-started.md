@@ -64,28 +64,17 @@ The server detects which client called it (via the MCP `initialize` handshake's 
 - Cowork-hosted **Claude Code** *(default)* → `jamie-claude-code` too — because under the hood it's the same client. **If you want it distinct, see "Override per surface" below.**
 - Other MCP hosts → `jamie-<slugified-client-name>`
 
-### Override per surface (Cowork ≠ Claude Code CLI)
+### Distinguishing Cowork from bare CLI Claude Code
 
-Cowork hosts its own Claude Code agent. By default it identifies as `claude-code` over MCP — so from the server's view, your bare-CLI Claude Code and your Cowork-hosted Claude Code look identical. If you treat them as different "agents" from a UX perspective and want their commits/journals signed differently:
+Cowork hosts its own Claude Code agent — it sends the same `clientInfo.name: "claude-code"` over MCP as your terminal. From v0.1.4, the server detects Cowork-hosted Claude Code by reading the `XPC_SERVICE_NAME` env var that macOS sets on apps launched from Finder (`application.com.anthropic.claudefordesktop.*`). When that fingerprint is present **and** the client looks like Claude Code, the server promotes the client to `cowork` automatically. So your Cowork-hosted agent commits as `jamie-cowork`, the bare CLI commits as `jamie-claude-code`, and you don't have to configure anything.
 
-**Cowork:** Customize → Plugins → Multisphere → Connectors → **workspace** → Environment Variables → set:
-
-```
-MULTISPHERE_CLIENT = cowork
-```
-
-The plugin's `.mcp.json` already declares `MULTISPHERE_CLIENT` with an empty value precisely so this field appears editable in Cowork's UI. Empty/whitespace value = use auto-detect; set value = override. After saving, restart Cowork.
-
-**Claude Code CLI** (if you also want to override there):
+If you ever need to override (e.g. running on Linux, custom client, testing):
 
 ```bash
-# In ~/.zshrc or ~/.bashrc
-export MULTISPHERE_CLIENT=claude-code   # or any value you want
+export MULTISPHERE_CLIENT=cowork   # or whatever
 ```
 
-Restart your shell + Claude Code session. The shell env wins over `.mcp.json`'s empty default.
-
-After overrides, your IDs become e.g. `jamie-cowork` in Cowork and `jamie-claude-code` in the bare CLI — distinct.
+In your shell rc, then restart the client. The env var takes precedence over auto-detection.
 
 ### Per-client overrides (if you need them)
 

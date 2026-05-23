@@ -55,7 +55,11 @@ The plugin format (`.claude-plugin/plugin.json` + `.claude-plugin/marketplace.js
 
 As of v0.1.2 the server auto-detects the calling client from the MCP `initialize` handshake's `clientInfo.name`. The detected name is normalized (`claude-ai` and `claude-desktop` both → `cowork`; `Claude Code N.x` → `claude-code`) and used as the fallback for `MULTISPHERE_CLIENT` when the env var isn't set.
 
-**Important caveat (Cowork-hosted Claude Code):** Cowork has its own built-in Claude Code agent that identifies itself as `claude-code` over MCP — same as the bare CLI. From the protocol's view they're indistinguishable. UX-wise the user thinks of them as different surfaces (Cowork app vs terminal). The fix is the v0.1.3 override mechanism: `.mcp.json` declares `MULTISPHERE_CLIENT: ""` so Cowork's connector UI exposes the field as editable. User fills in `cowork` to override the auto-detection. Empty/whitespace = fall through to auto-detect.
+**Cowork-hosted Claude Code disambiguation (v0.1.4):** Cowork hosts its own built-in Claude Code agent that sends the same `clientInfo.name = "claude-code"` over MCP as the bare CLI. The server can't tell them apart from the handshake alone. The disambiguation signal: **`XPC_SERVICE_NAME`**, which macOS sets on Finder-launched apps. Cowork (`com.anthropic.claudefordesktop`) propagates a value containing `claudefordesktop` to every child process it spawns, including the multisphere MCP server. The bare CLI launched from a terminal session inherits a different XPC context.
+
+`setDetectedClient` in `config.ts` checks the XPC env on every initialize: if the normalized client is `claude-code` AND `XPC_SERVICE_NAME` contains `claudefordesktop`, it promotes the detected client to `cowork`. Other client names are unaffected.
+
+Earlier v0.1.3 tried to surface `MULTISPHERE_CLIENT` as an editable env var in Cowork's connector UI. That didn't work — Cowork masks all plugin-declared env vars and doesn't allow editing. v0.1.4 removes that mechanism in favor of the XPC fingerprint. `MULTISPHERE_CLIENT` env still works as a manual override for non-macOS environments or future hosts that we can't auto-detect.
 
 **Recommended user setup**: a single `~/.multisphere/identity.json`:
 
