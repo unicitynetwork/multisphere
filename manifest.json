@@ -1,0 +1,110 @@
+{
+  "manifest_version": "0.3",
+  "name": "multisphere",
+  "display_name": "Multisphere",
+  "version": "0.1.0",
+  "description": "Multiplayer agents over a shared git workspace. Drop-board protocol + multisphere-mcp server.",
+  "long_description": "Multisphere lets agents coordinate asynchronously through a shared git repository — a 'drop board' — instead of trying to chat with each other. This MCPB ships the multisphere-mcp server, which exposes git, filesystem, and journal/inbox protocol tools scoped to whichever workspace you've activated.\n\nFor Claude Code, install the companion plugin from the repo's marketplace. For Cowork (and other MCPB-compatible Desktop-style clients), this bundle is the install path.",
+  "author": {
+    "name": "Jamie Steiner",
+    "email": "jamie@unicity-labs.com",
+    "url": "https://github.com/unicity-labs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/unicity-labs/multisphere.git"
+  },
+  "homepage": "https://github.com/unicity-labs/multisphere",
+  "license": "MIT",
+  "keywords": [
+    "multiplayer",
+    "multi-agent",
+    "agent-to-agent",
+    "a2a",
+    "git",
+    "workspace"
+  ],
+  "server": {
+    "type": "node",
+    "entry_point": "mcp-server/dist/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": [
+        "${__dirname}/mcp-server/dist/index.js"
+      ],
+      "env": {
+        "MULTISPHERE_AGENT_ID": "${user_config.agent_id}",
+        "MULTISPHERE_AGENT_NAME": "${user_config.agent_name}",
+        "MULTISPHERE_AGENT_EMAIL": "${user_config.agent_email}",
+        "PATH": "/usr/local/bin:/usr/bin:/bin"
+      },
+      "platform_overrides": {
+        "darwin": {
+          "env": {
+            "MULTISPHERE_AGENT_ID": "${user_config.agent_id}",
+            "MULTISPHERE_AGENT_NAME": "${user_config.agent_name}",
+            "MULTISPHERE_AGENT_EMAIL": "${user_config.agent_email}",
+            "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+          }
+        },
+        "win32": {
+          "env": {
+            "MULTISPHERE_AGENT_ID": "${user_config.agent_id}",
+            "MULTISPHERE_AGENT_NAME": "${user_config.agent_name}",
+            "MULTISPHERE_AGENT_EMAIL": "${user_config.agent_email}",
+            "PATH": "C:\\Program Files\\Git\\cmd;C:\\Windows\\System32;C:\\Windows"
+          }
+        }
+      }
+    }
+  },
+  "user_config": {
+    "agent_id": {
+      "type": "string",
+      "title": "Agent ID",
+      "description": "Stable identifier for this agent. Convention: <user>-<client>, e.g. \"jamie-cowork\" or \"mike-claude-desktop\". Used as the git commit author tag and as the agent's name in journal entries.",
+      "required": true
+    },
+    "agent_name": {
+      "type": "string",
+      "title": "Display name",
+      "description": "Human-readable name used in journal entries and as the git user.name for commits made by this agent.",
+      "required": true
+    },
+    "agent_email": {
+      "type": "string",
+      "title": "Email",
+      "description": "Used as the git user.email for commits made by this agent.",
+      "required": true
+    }
+  },
+  "compatibility": {
+    "platforms": ["darwin", "win32", "linux"],
+    "runtimes": {
+      "node": ">=20.0.0"
+    }
+  },
+  "tools_generated": false,
+  "tools": [
+    { "name": "workspace_init", "description": "Clone or register a workspace and make it active." },
+    { "name": "workspace_list", "description": "List all configured workspaces." },
+    { "name": "workspace_switch", "description": "Switch the active workspace by name." },
+    { "name": "workspace_info", "description": "Current workspace name, path, remote, HEAD, branch." },
+    { "name": "fetch", "description": "git fetch on the active workspace." },
+    { "name": "pull", "description": "Fast-forward pull. Conflicts surface, not auto-merged." },
+    { "name": "status", "description": "Working-tree status for the active workspace." },
+    { "name": "diff", "description": "Unified diff for the active workspace." },
+    { "name": "log", "description": "Git log entries for the active workspace." },
+    { "name": "add", "description": "Stage paths for commit." },
+    { "name": "commit", "description": "Create a commit using the configured agent identity." },
+    { "name": "push", "description": "Push to the configured remote." },
+    { "name": "read", "description": "Read a file inside the active workspace." },
+    { "name": "write", "description": "Write or append to a file inside the active workspace." },
+    { "name": "list", "description": "List entries in a workspace directory." },
+    { "name": "search", "description": "Substring search across workspace text files." },
+    { "name": "journal_append", "description": "Append a signed, timestamped entry to journal.md." },
+    { "name": "inbox_add", "description": "Add an open item to inbox.md. Returns INB-NNN id." },
+    { "name": "inbox_close", "description": "Close an open inbox item by INB-NNN id." },
+    { "name": "whats_new", "description": "Diff from this agent's last-read pointer to HEAD." }
+  ]
+}
