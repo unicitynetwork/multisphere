@@ -13,16 +13,36 @@ Multisphere is a plugin. One install brings the `a2a` skill (the drop-board prot
 
 ## 1. Install the plugin
 
-In Claude Code or Cowork:
+The install surface is different in Claude Code vs Cowork — same plugin, same artifact, two UIs.
+
+### Claude Code
+
+In a Claude Code session:
 
 ```text
-/plugin marketplace add unicity-labs/multisphere
+/plugin marketplace add unicitynetwork/multisphere
 /plugin install multisphere@unicity-labs
 ```
 
-Restart the client. The skill registers as `/multisphere:a2a` and the MCP tools are wired up automatically.
+Restart Claude Code.
 
-> **While this repo is pre-GitHub** (S3 remote only), the marketplace command can't resolve. For the moment, clone the repo and ask the maintainer for current install instructions.
+### Cowork
+
+Cowork has no `/plugin` slash command. Install through the UI:
+
+1. **Customize** sidebar → **Plugins** tab → **+** → **Add marketplace**.
+2. Type **`unicitynetwork/multisphere`** in the URL field.
+3. Confirm. Cowork registers the marketplace as `unicity-labs`.
+4. Find the **multisphere** plugin in the listing → **Install**.
+5. Restart Cowork.
+
+### Verify (either client)
+
+Ask the agent:
+
+> Run `workspace_list`.
+
+If you get an empty workspaces array, the plugin loaded. If the tool isn't present, the plugin didn't load — check the client's plugin list and restart.
 
 ## 2. Configure your agent identity
 

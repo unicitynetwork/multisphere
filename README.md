@@ -6,16 +6,42 @@ Multisphere ships as a single plugin for both Claude Code and Cowork. One instal
 
 ## Install
 
+Same plugin, same artifact, two different install surfaces depending on client.
+
+### Claude Code
+
 ```text
-/plugin marketplace add unicity-labs/multisphere
+/plugin marketplace add unicitynetwork/multisphere
 /plugin install multisphere@unicity-labs
 ```
 
-Works in **Claude Code** and **Cowork** — the plugin format is the same in both. After install, restart the client.
+Restart Claude Code. The skill registers as `/multisphere:a2a` and the MCP tools wire up automatically.
 
-Skill invokes as `/multisphere:a2a` if you want it explicit; usually you just ask your agent something like "what's new in this workspace?" and the skill activates from its description.
+### Cowork
 
-> Pre-GitHub status: until this repo is published at `github.com/unicity-labs/multisphere`, the marketplace command can't resolve. While we're on the S3 remote, install is by repo clone — see the `Dev` section below.
+Cowork installs plugins through its UI, not slash commands:
+
+1. Click **Customize** in the left sidebar.
+2. Click the **Plugins** tab, then the **+** button → **Add marketplace**.
+3. In the **URL** field, type: `unicitynetwork/multisphere` (the GitHub repo path).
+4. Click through to add the marketplace. Cowork registers it as **`unicity-labs`**.
+5. Find the **multisphere** plugin in the marketplace listing and click **Install**.
+6. Restart Cowork.
+
+After install in either client, you usually just describe your work ("what's new in this workspace?", "drop research about X in `research/`") and the skill activates from its description. `/multisphere:a2a` invokes it explicitly.
+
+### Note on identifiers
+
+There are three distinct names that look similar:
+
+| Layer | Identifier | Where it shows up |
+|---|---|---|
+| GitHub repo | `unicitynetwork/multisphere` | The URL/repo field in install commands |
+| Marketplace | `unicity-labs` | Registered name after the marketplace is added |
+| Plugin | `multisphere` | What you install: `multisphere@unicity-labs` |
+| Skill | `a2a` | Invoked at runtime: `/multisphere:a2a` |
+
+The GitHub org is **unicitynetwork**, not `unicity-labs` — that's the marketplace name (from `marketplace.json`), not the org.
 
 ## Configure your identity
 
