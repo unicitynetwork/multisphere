@@ -55,11 +55,14 @@ The plugin format (`.claude-plugin/plugin.json` + `.claude-plugin/marketplace.js
 
 As of v0.1.2 the server auto-detects the calling client from the MCP `initialize` handshake's `clientInfo.name`. The detected name is normalized (`claude-ai` and `claude-desktop` both → `cowork`; `Claude Code N.x` → `claude-code`) and used as the fallback for `MULTISPHERE_CLIENT` when the env var isn't set.
 
-**Cowork-hosted Claude Code disambiguation (v0.1.4):** Cowork hosts its own built-in Claude Code agent that sends the same `clientInfo.name = "claude-code"` over MCP as the bare CLI. The server can't tell them apart from the handshake alone. The disambiguation signal: **`XPC_SERVICE_NAME`**, which macOS sets on Finder-launched apps. Cowork (`com.anthropic.claudefordesktop`) propagates a value containing `claudefordesktop` to every child process it spawns, including the multisphere MCP server. The bare CLI launched from a terminal session inherits a different XPC context.
+**Cowork-hosted Claude Code disambiguation (v0.1.6):** Cowork hosts its own built-in Claude Code agent that sends the same `clientInfo.name = "claude-code"` over MCP as the bare CLI. The disambiguation signal lives in env vars Cowork sets when spawning plugin MCP servers:
 
-`setDetectedClient` in `config.ts` checks the XPC env on every initialize: if the normalized client is `claude-code` AND `XPC_SERVICE_NAME` contains `claudefordesktop`, it promotes the detected client to `cowork`. Other client names are unaffected.
+- `CLAUDE_PLUGIN_ROOT` — contains `claude-hostloop-plugins` under Cowork's `$TMPDIR/claude-hostloop-plugins/<hash>/` staging dir
+- `CLAUDE_PROJECT_DIR` and `cwd` — contain `local-agent-mode-sessions` under `~/Library/Application Support/Claude/local-agent-mode-sessions/…`
 
-Earlier v0.1.3 tried to surface `MULTISPHERE_CLIENT` as an editable env var in Cowork's connector UI. That didn't work — Cowork masks all plugin-declared env vars and doesn't allow editing. v0.1.4 removes that mechanism in favor of the XPC fingerprint. `MULTISPHERE_CLIENT` env still works as a manual override for non-macOS environments or future hosts that we can't auto-detect.
+`isCoworkHostedEnvironment()` in `config.ts` checks any of those paths for `claude-hostloop-plugins` or `local-agent-mode-sessions`. If true AND the normalized client is `claude-code`, `setDetectedClient` promotes the result to `cowork`. Other client names are unaffected.
+
+History: v0.1.3 tried surfacing `MULTISPHERE_CLIENT` as a user-editable env var in Cowork's connector UI — didn't work because Cowork masks all plugin-declared env vars and disallows editing. v0.1.4 tried `XPC_SERVICE_NAME` — didn't work because Cowork's plugin-MCP spawn context strips macOS XPC values (we saw `XPC_SERVICE_NAME=0` in the actual env dump, not the expected `claudefordesktop` value). v0.1.5 was a temporary diagnostic that wrote env to `~/.multisphere/server-debug.log` to discover the real signal. v0.1.6 uses the path-content signals we found from that dump. `MULTISPHERE_CLIENT` env still works as a manual override.
 
 **Recommended user setup**: a single `~/.multisphere/identity.json`:
 

@@ -66,7 +66,7 @@ The server detects which client called it (via the MCP `initialize` handshake's 
 
 ### Distinguishing Cowork from bare CLI Claude Code
 
-Cowork hosts its own Claude Code agent — it sends the same `clientInfo.name: "claude-code"` over MCP as your terminal. From v0.1.4, the server detects Cowork-hosted Claude Code by reading the `XPC_SERVICE_NAME` env var that macOS sets on apps launched from Finder (`application.com.anthropic.claudefordesktop.*`). When that fingerprint is present **and** the client looks like Claude Code, the server promotes the client to `cowork` automatically. So your Cowork-hosted agent commits as `jamie-cowork`, the bare CLI commits as `jamie-claude-code`, and you don't have to configure anything.
+Cowork hosts its own Claude Code agent — it sends the same `clientInfo.name: "claude-code"` over MCP as your terminal. From v0.1.6, the server distinguishes them by checking environment vars Cowork sets when spawning plugin MCP servers (`CLAUDE_PLUGIN_ROOT` / `CLAUDE_PROJECT_DIR` / cwd containing `claude-hostloop-plugins` or `local-agent-mode-sessions`). When that fingerprint is present **and** the client looks like Claude Code, the server promotes the client to `cowork` automatically. So your Cowork-hosted agent commits as `jamie-cowork`, the bare CLI commits as `jamie-claude-code`, and you don't have to configure anything.
 
 If you ever need to override (e.g. running on Linux, custom client, testing):
 

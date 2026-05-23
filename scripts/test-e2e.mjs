@@ -241,24 +241,35 @@ check(
   ccAuto.agent_id === 'jamie-claude-code',
 );
 
-// 13b. XPC fingerprint promotes claude-code → cowork when running under Cowork.
-process.env.XPC_SERVICE_NAME = 'application.com.anthropic.claudefordesktop.123.456';
+// 13b. Cowork fingerprint via CLAUDE_PLUGIN_ROOT promotes claude-code → cowork.
+process.env.CLAUDE_PLUGIN_ROOT = '/var/folders/x/T/claude-hostloop-plugins/abcd1234';
 setDetectedClient('claude-code');
 const ccUnderCowork = await resolveIdentity();
 check(
-  'detected claude-code + XPC=claudefordesktop → jamie-cowork',
+  'CLAUDE_PLUGIN_ROOT contains claude-hostloop-plugins → jamie-cowork',
   ccUnderCowork.agent_id === 'jamie-cowork',
 );
+delete process.env.CLAUDE_PLUGIN_ROOT;
 
-// 13c. XPC fingerprint does NOT affect non-claude-code clients.
-process.env.XPC_SERVICE_NAME = 'application.com.anthropic.claudefordesktop.123.456';
+// 13c. local-agent-mode-sessions in CLAUDE_PROJECT_DIR is also a Cowork signal.
+process.env.CLAUDE_PROJECT_DIR = '/Users/jamie/Library/Application Support/Claude/local-agent-mode-sessions/sess/profile/outputs';
+setDetectedClient('claude-code');
+const ccUnderCoworkViaProjectDir = await resolveIdentity();
+check(
+  'CLAUDE_PROJECT_DIR contains local-agent-mode-sessions → jamie-cowork',
+  ccUnderCoworkViaProjectDir.agent_id === 'jamie-cowork',
+);
+delete process.env.CLAUDE_PROJECT_DIR;
+
+// 13d. Cowork fingerprint does NOT affect non-claude-code clients.
+process.env.CLAUDE_PLUGIN_ROOT = '/var/folders/x/T/claude-hostloop-plugins/abcd1234';
 setDetectedClient('some-other-client');
 const otherUnderCowork = await resolveIdentity();
 check(
-  'XPC fingerprint does not promote unrelated clients',
+  'Cowork fingerprint does not promote unrelated clients',
   otherUnderCowork.agent_id === 'jamie-some-other-client',
 );
-delete process.env.XPC_SERVICE_NAME;
+delete process.env.CLAUDE_PLUGIN_ROOT;
 
 // 14. Env var still wins over detected client.
 setDetectedClient('claude-ai');

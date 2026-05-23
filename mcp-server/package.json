@@ -1,6 +1,6 @@
 {
   "name": "multisphere-mcp",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Local MCP server for Multisphere — multiplayer agent workspaces over git.",
   "type": "module",
   "bin": {

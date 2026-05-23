@@ -46,25 +46,32 @@ export function normalizeClientName(name: string): string {
 }
 
 /**
- * macOS-specific Cowork detection.
+ * Detect Cowork-hosted Claude Code via filesystem-path fingerprint.
  *
- * Cowork ships as Claude.app (`com.anthropic.claudefordesktop`). When macOS
- * launches it, the OS sets `XPC_SERVICE_NAME` to a string containing
- * `claudefordesktop` and that value propagates to every child process Cowork
- * spawns — including the multisphere MCP server.
+ * Cowork hosts its own Claude Code agent that identifies itself over MCP
+ * as `claude-code` — same as the bare CLI. The MCP `initialize` handshake
+ * alone can't distinguish them. But Cowork spawns plugin MCP servers with
+ * environment vars containing the path `claude-hostloop-plugins` (its
+ * host-side plugin staging dir at `$TMPDIR/claude-hostloop-plugins/…`).
+ * Bare-CLI Claude Code doesn't use that path.
  *
- * The bare Claude Code CLI launched from a terminal session inherits the
- * terminal's XPC context instead, which doesn't contain `claudefordesktop`.
+ * Empirically verified by running v0.1.5's diagnostic dump in both surfaces:
+ *   Cowork: CLAUDE_PLUGIN_ROOT=/var/folders/.../claude-hostloop-plugins/...
+ *   Bare CLI: CLAUDE_PLUGIN_ROOT unset or set to a non-hostloop path
  *
- * Cowork hosts a Claude Code agent that identifies itself over MCP as
- * `claude-code` — same as the bare CLI. Without this signal, we can't tell
- * them apart. With it, Cowork-hosted Claude Code resolves to `cowork` and
- * bare CLI resolves to `claude-code`, even though both send the same
- * clientInfo.name.
+ * Also: cwd / CLAUDE_PROJECT_DIR in Cowork contain
+ * `local-agent-mode-sessions` — kept as a secondary signal.
  */
 function isCoworkHostedEnvironment(): boolean {
-  const xpc = process.env.XPC_SERVICE_NAME ?? '';
-  return xpc.toLowerCase().includes('claudefordesktop');
+  const candidates = [
+    process.env.CLAUDE_PLUGIN_ROOT ?? '',
+    process.env.CLAUDE_PLUGIN_DATA ?? '',
+    process.env.CLAUDE_PROJECT_DIR ?? '',
+    process.cwd(),
+  ];
+  return candidates.some(
+    (p) => p.includes('claude-hostloop-plugins') || p.includes('local-agent-mode-sessions'),
+  );
 }
 
 export function setDetectedClient(name: string | undefined): void {

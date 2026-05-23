@@ -2,7 +2,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
-import { readFileSync, appendFileSync, mkdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -38,37 +38,6 @@ server.server.oninitialized = () => {
   if (info?.name) {
     setDetectedClient(info.name);
     process.stderr.write(`multisphere-mcp: client="${info.name}" version="${info.version ?? '?'}"\n`);
-
-    // DIAGNOSTIC (0.1.5): dump candidate signals for Cowork-hosted-Claude-Code
-    // detection to a host-side log file. Helps identify which env var / cwd /
-    // parent process pattern is actually available in Cowork's spawn context.
-    // Remove or gate behind a flag once the right signal is known.
-    try {
-      const candidates: Record<string, unknown> = {
-        ts: new Date().toISOString(),
-        clientName: info.name,
-        clientVersion: info.version,
-        normalizedClient: (info.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-        cwd: process.cwd(),
-        ppid: process.ppid,
-        platform: process.platform,
-        env: Object.fromEntries(
-          Object.entries(process.env).filter(([k]) =>
-            /^(XPC|CLAUDE|COWORK|MCP|HOST|ANTHROPIC|APP|BUNDLE)/i.test(k) ||
-            /CLIENT|PLUGIN|SESSION|AGENT/i.test(k),
-          ),
-        ),
-      };
-      const home = process.env.HOME ?? '/tmp';
-      mkdirSync(`${home}/.multisphere`, { recursive: true });
-      appendFileSync(
-        `${home}/.multisphere/server-debug.log`,
-        JSON.stringify(candidates) + '\n',
-        'utf8',
-      );
-    } catch (err) {
-      process.stderr.write(`multisphere-mcp-debug: write failed: ${(err as Error).message}\n`);
-    }
   }
 };
 
