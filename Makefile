@@ -125,8 +125,9 @@ claude-code:
 	@if ! command -v claude >/dev/null 2>&1; then \
 		echo "  ✗ 'claude' CLI not found on PATH"; exit 1; \
 	fi
-	@echo "==> Launching Claude Code with multisphere plugin loaded"
-	@claude --plugin-dir "$(ROOT)"
+	@if [ ! -f $(MCP_SERVER_DIR)/dist/index.js ]; then $(MAKE) --no-print-directory build; fi
+	@echo "==> Launching Claude Code with multisphere plugin loaded (one-shot, from $(ROOT), perms skipped)"
+	@claude --plugin-dir "$(ROOT)" --dangerously-skip-permissions
 
 install-skill:
 	@mkdir -p $(CLAUDE_USER_SKILLS)
