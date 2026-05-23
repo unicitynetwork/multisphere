@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__plugin_multisphere_multisphere__workspace_list",
+      "Bash(mkdir -p /Users/jamie/Work/ms-test-remote.git)",
+      "Bash(git init *)",
+      "mcp__plugin_multisphere_multisphere__workspace_init",
+      "Read(//Users/jamie/**)",
+      "Read(//Users/jamie/.multisphere/**)",
+      "mcp__plugin_multisphere_multisphere__status",
+      "mcp__plugin_multisphere_multisphere__write",
+      "mcp__plugin_multisphere_multisphere__journal_append",
+      "mcp__plugin_multisphere_multisphere__add",
+      "mcp__plugin_multisphere_multisphere__commit",
+      "mcp__plugin_multisphere_multisphere__push"
+    ]
+  }
+}

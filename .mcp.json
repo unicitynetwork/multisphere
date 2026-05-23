@@ -1,8 +1,11 @@
 {
   "mcpServers": {
-    "multisphere": {
+    "workspace": {
       "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/mcp-server/dist/index.js"]
+      "args": ["${CLAUDE_PLUGIN_ROOT}/mcp-server/dist/index.js"],
+      "env": {
+        "MULTISPHERE_CLIENT": "claude-code"
+      }
     }
   }
 }

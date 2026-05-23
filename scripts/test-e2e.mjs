@@ -34,6 +34,11 @@ const configPath = path.join(configDir, 'config.json');
 
 await fs.mkdir(configDir, { recursive: true });
 process.env.HOME = fakeHome;
+// Make sure no env-var identity is leaking in from the parent shell.
+delete process.env.MULTISPHERE_AGENT_ID;
+delete process.env.MULTISPHERE_AGENT_NAME;
+delete process.env.MULTISPHERE_AGENT_EMAIL;
+delete process.env.MULTISPHERE_CLIENT;
 
 // Create a bare remote and seed it with an initial commit.
 execSync(`git init -b main --bare "${remoteDir}"`, { stdio: 'pipe' });
@@ -153,6 +158,65 @@ check('whats_new returns current sha', wn.current_sha === commit.sha);
 
 const pointers = await fsList({ dir: '.pointers' });
 check('pointer file created', pointers.entries.some((e) => e.name === 'jamie-claude-code.json'));
+
+// 9. Identity refactor invariants.
+const workspacesFileExists = await fs
+  .stat(path.join(configDir, 'workspaces.json'))
+  .then(() => true)
+  .catch(() => false);
+check('workspaces.json was written by saveConfig', workspacesFileExists);
+
+const legacyConfig = JSON.parse(await fs.readFile(configPath, 'utf8'));
+check(
+  'legacy config.json identity preserved (not overwritten)',
+  legacyConfig.agent_id === 'jamie-claude-code',
+);
+
+// 10. Identity resolution: env var wins over file.
+const { resolveIdentity } = await import(`${MCP_DIST}/config.js`);
+process.env.MULTISPHERE_AGENT_ID = 'jamie-cowork';
+process.env.MULTISPHERE_AGENT_NAME = 'Jamie (Cowork)';
+process.env.MULTISPHERE_AGENT_EMAIL = 'jamie@unicity-labs.com';
+const envIdentity = await resolveIdentity();
+check('env vars override file identity', envIdentity.agent_id === 'jamie-cowork');
+
+delete process.env.MULTISPHERE_AGENT_ID;
+delete process.env.MULTISPHERE_AGENT_NAME;
+delete process.env.MULTISPHERE_AGENT_EMAIL;
+
+// 11. Identity resolution: per-client file beats default + legacy.
+await fs.writeFile(
+  path.join(configDir, 'identity.cowork.json'),
+  JSON.stringify({
+    agent_id: 'jamie-cowork',
+    agent_name: 'Jamie via Cowork',
+    agent_email: 'jamie@unicity-labs.com',
+  }),
+);
+process.env.MULTISPHERE_CLIENT = 'cowork';
+const coworkIdentity = await resolveIdentity();
+check(
+  'per-client identity.cowork.json beats config.json',
+  coworkIdentity.agent_id === 'jamie-cowork' && coworkIdentity.agent_name === 'Jamie via Cowork',
+);
+delete process.env.MULTISPHERE_CLIENT;
+
+// 12. Identity resolution: default identity.json with user_slug + client derives agent_id.
+await fs.writeFile(
+  path.join(configDir, 'identity.json'),
+  JSON.stringify({
+    user_slug: 'jamie',
+    agent_name: 'Jamie',
+    agent_email: 'jamie@unicity-labs.com',
+  }),
+);
+process.env.MULTISPHERE_CLIENT = 'claude-desktop';
+const derived = await resolveIdentity();
+check(
+  'identity.json + MULTISPHERE_CLIENT derives <user_slug>-<client>',
+  derived.agent_id === 'jamie-claude-desktop',
+);
+delete process.env.MULTISPHERE_CLIENT;
 
 if (failures > 0) {
   console.error(`\n✗ ${failures} check(s) failed`);

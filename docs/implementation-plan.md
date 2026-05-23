@@ -37,9 +37,12 @@ multisphere/
 ├── CLAUDE.md
 ├── .gitignore
 ├── .claude-plugin/
-│   ├── plugin.json            # Claude Code plugin manifest
-│   └── marketplace.json       # single-plugin marketplace (this repo)
+│   ├── plugin.json            # plugin manifest (name: multisphere)
+│   └── marketplace.json       # marketplace manifest (name: unicity-labs)
 ├── .mcp.json                  # bundles the MCP server with the plugin
+├── manifest.json              # fallback MCPB for non-plugin MCP hosts
+├── scripts/build-mcpb.sh      # builds the fallback .mcpb (dev only)
+├── Makefile                   # developer convenience (dev only)
 ├── docs/
 │   ├── concept.md
 │   ├── product-plan.md
@@ -55,7 +58,14 @@ multisphere/
     └── a2a/SKILL.md           # the agent-to-agent drop-board protocol
 ```
 
-The plugin is named `multisphere`, the skill is named `a2a`, and the slash command resolves as `/multisphere:a2a`. Plugin manifest fields:
+The plugin format is supported by **both Claude Code and Cowork** — confirmed by [claude.com/plugins](https://claude.com/plugins). One install command works in both:
+
+```text
+/plugin marketplace add unicity-labs/multisphere
+/plugin install multisphere@unicity-labs
+```
+
+Marketplace name `unicity-labs`, plugin name `multisphere`, skill name `a2a` → invoked as `/multisphere:a2a`. Plugin manifest fields:
 
 ```json
 {
@@ -74,15 +84,20 @@ The plugin is named `multisphere`, the skill is named `a2a`, and the slash comma
 ```json
 {
   "mcpServers": {
-    "multisphere": {
+    "workspace": {
       "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/mcp-server/dist/index.js"]
+      "args": ["${CLAUDE_PLUGIN_ROOT}/mcp-server/dist/index.js"],
+      "env": { "MULTISPHERE_CLIENT": "claude-code" }
     }
   }
 }
 ```
 
+The MCP server key is `workspace`, not `multisphere`, so tool calls display as `plugin:multisphere:workspace - <tool>` instead of the doubled-up `plugin:multisphere:multisphere - <tool>`.
+
 After `multisphere-mcp` ships to npm, switch the command/args to `npx -y multisphere-mcp@latest` and the build-from-source step goes away.
+
+The MCPB bundle (`manifest.json` + `scripts/build-mcpb.sh`) stays as a fallback for MCP hosts that don't support the `/plugin` system. It carries only the server; the skill ships separately when needed.
 
 ## 1. Workspace template
 

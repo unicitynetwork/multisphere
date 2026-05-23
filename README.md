@@ -2,44 +2,40 @@
 
 Multiplayer agents over a shared git workspace. My agent works for me. Your agent works for you. They share a drop board — a git repo with an opinionated layout and a journal protocol — where work product lands. No agent-to-agent chat. Async coordination through artifacts.
 
-Multisphere is shipped as a **Claude Code plugin**: one install drops in the `a2a` skill (the drop-board protocol) and wires up the `multisphere-mcp` MCP server.
+Multisphere ships as a single plugin for both Claude Code and Cowork. One install brings the `a2a` skill (the drop-board protocol) and the `multisphere-mcp` server.
 
 ## Install
 
-Two install paths, depending on your client:
-
-### Claude Code → plugin
-
 ```text
 /plugin marketplace add unicity-labs/multisphere
-/plugin install multisphere@multisphere
+/plugin install multisphere@unicity-labs
 ```
 
-The plugin's `.mcp.json` boots `multisphere-mcp` and the `a2a` skill activates whenever you're in a workspace. Slash command: `/multisphere:a2a`.
+Works in **Claude Code** and **Cowork** — the plugin format is the same in both. After install, restart the client.
 
-### Cowork (and other MCPB-compatible clients) → .mcpb bundle
+Skill invokes as `/multisphere:a2a` if you want it explicit; usually you just ask your agent something like "what's new in this workspace?" and the skill activates from its description.
 
-Build the bundle locally:
+> Pre-GitHub status: until this repo is published at `github.com/unicity-labs/multisphere`, the marketplace command can't resolve. While we're on the S3 remote, install is by repo clone — see the `Dev` section below.
 
-```bash
-./scripts/build-mcpb.sh
-# → .build/dist/multisphere-0.1.0.mcpb
+## Configure your identity
+
+The MCP server needs to know who you are so it can sign journal entries and git commits. Identity is resolved per-client (so the same machine can host `jamie-claude-code` and `jamie-cowork` without collision).
+
+Simplest setup, covers all clients on the machine — create `~/.multisphere/identity.json`:
+
+```json
+{
+  "user_slug": "jamie",
+  "agent_name": "Jamie",
+  "agent_email": "jamie@unicity-labs.com"
+}
 ```
 
-In Cowork: Settings → Extensions → Install Extension → select the `.mcpb`. The install dialog will ask for `agent_id`, `agent_name`, and `agent_email`; they flow into the MCP server via env vars.
-
-Cowork is the target for the Desktop form factor because it has the filesystem access multisphere needs. Vanilla Claude Desktop sandboxes too aggressively for the workspace clones to live anywhere usable.
-
-### Local dev (Claude Code, pre-GitHub)
-
-```bash
-cd mcp-server && npm install && npm run build && cd ..
-claude --plugin-dir "$(pwd)"
-```
+The server appends the client suffix automatically: Claude Code becomes `jamie-claude-code`, Cowork becomes `jamie-cowork`. Full precedence order and per-client overrides: [`docs/getting-started.md`](docs/getting-started.md).
 
 ## What it does
 
-Single-player agents are done. Everyone has MCP, everyone has tool calling. The next move is multiplayer — and the team-chat-for-robots architectures everyone tried first are a token nightmare and a hallucination nightmare. Multisphere bets on the simpler thing: agents read each other's *outputs* through a shared repo, and humans stay in the loop on what triggers what.
+Single-player agents are done. Everyone has MCP, everyone has tool calling. The next move is multiplayer — and team-chat-for-robots architectures are a token nightmare and a hallucination nightmare. Multisphere bets on the simpler thing: agents read each other's *outputs* through a shared repo, and humans stay in the loop on what triggers what.
 
 A run looks like this. You tell your agent to drop research in `research/`. The agent does the work, writes a journal entry, commits, pushes. Tomorrow Mike opens his agent — "what's new?" His agent pulls, reads the journal tail, summarizes. He says "build a slide from Jamie's research." Mike's agent does it, journals, pushes. No agent ever talks to another agent.
 
@@ -50,29 +46,32 @@ See [`docs/concept.md`](docs/concept.md) for the longer story. [`docs/product-pl
 ```
 .
 ├── .claude-plugin/
-│   ├── plugin.json                 # Claude Code plugin manifest
-│   └── marketplace.json            # single-plugin marketplace (this repo)
-├── .mcp.json                       # MCP server config (Claude Code path)
-├── manifest.json                   # MCPB manifest (Cowork / Desktop path)
-├── scripts/
-│   └── build-mcpb.sh               # produces .build/dist/multisphere-X.Y.Z.mcpb
+│   ├── plugin.json                 # plugin manifest (name: multisphere)
+│   └── marketplace.json            # marketplace manifest (name: unicity-labs)
+├── .mcp.json                       # bundled MCP server config
 ├── skills/
-│   └── a2a/SKILL.md                # the drop-board protocol (invokes as /multisphere:a2a)
+│   └── a2a/SKILL.md                # the drop-board protocol (/multisphere:a2a)
 ├── mcp-server/                     # multisphere-mcp (TypeScript, Node 20+)
 ├── workspace-template/             # cloneable seed for a new workspace
 ├── docs/
 │   ├── concept.md
 │   ├── product-plan.md
 │   ├── implementation-plan.md
-│   ├── getting-started.md          # 10-min setup walkthrough
+│   ├── getting-started.md          # setup walkthrough
 │   └── protocol.md                 # wire spec for journal/inbox/pointers
-├── README.md
+├── manifest.json                   # (fallback) MCPB manifest for non-plugin hosts
+├── scripts/build-mcpb.sh           # (fallback) builds the .mcpb
+├── Makefile                        # (developer tool, not for end users)
 └── CLAUDE.md
 ```
 
+## Fallback: non-plugin MCP hosts
+
+If you're running an MCP host that doesn't support the `/plugin` system (something other than Claude Code or Cowork), there's an `.mcpb` bundle as a fallback. It carries only the MCP server — you'd add the skill manually to that host's equivalent of `~/.claude/skills/`. We publish a `.mcpb` per release; build it locally with `./scripts/build-mcpb.sh` until the first GitHub release.
+
 ## What works today (v1)
 
-- One-command Claude Code install via the plugin manifest.
+- One-command plugin install for Claude Code and Cowork.
 - `multisphere-mcp` exposes 20 tools: workspace × 4, git × 8, fs × 4, protocol × 4.
 - The `a2a` skill ships the entry/exit protocol, file formats, and error handling.
 - Pull is fast-forward only. Conflicts surface to the human, never silently merge.
@@ -81,6 +80,10 @@ See [`docs/concept.md`](docs/concept.md) for the longer story. [`docs/product-pl
 ## Not in v1
 
 Branches, PRs, real-time notifications, agent-to-agent direct messaging, a hosted UI, identity verification beyond git config, billing. See [`docs/product-plan.md`](docs/product-plan.md).
+
+## Dev
+
+Developing on the repo? See [`CLAUDE.md`](CLAUDE.md). Build and test commands live in the `Makefile` — not part of the user install path.
 
 ## Status
 
