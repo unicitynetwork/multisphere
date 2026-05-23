@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { simpleGit } from 'simple-git';
-import { loadConfig, getActiveWorkspace } from './config.js';
+import { loadConfig, getActiveWorkspace, assertIdentity } from './config.js';
 import { safeJoin, nowStamp, nowIso } from './paths.js';
 import type { JournalTodo, PointerFile } from './types.js';
 
@@ -29,6 +29,7 @@ interface ActiveContext {
 
 async function activeContext(): Promise<ActiveContext> {
   const cfg = await loadConfig();
+  assertIdentity(cfg);
   const { ws } = getActiveWorkspace(cfg);
   return { root: ws.local_path, agent_id: cfg.agent_id, agent_name: cfg.agent_name };
 }
@@ -223,6 +224,7 @@ export async function inboxClose(args: { id: string; resolution: string; journal
 
 export async function whatsNew() {
   const cfg = await loadConfig();
+  assertIdentity(cfg);
   const { ws } = getActiveWorkspace(cfg);
   const root = ws.local_path;
   const git = simpleGit(root);

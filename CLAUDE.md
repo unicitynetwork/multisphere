@@ -21,7 +21,7 @@ The plugin format (`.claude-plugin/plugin.json` + `.claude-plugin/marketplace.js
 
 - `.claude-plugin/plugin.json` — plugin manifest. `name: "multisphere"`, version, description.
 - `.claude-plugin/marketplace.json` — marketplace manifest. `name: "unicity-labs"` (publisher-level, can hold additional plugins later). Single plugin entry pointing at `./`.
-- `.mcp.json` — bundled MCP server config. Server key is `workspace` (not `multisphere` — that doubled with the plugin name and produced ugly `plugin:multisphere:multisphere` displays). Uses `node ${CLAUDE_PLUGIN_ROOT}/mcp-server/dist/index.js`. Sets `MULTISPHERE_CLIENT=claude-code`. Switch the command to `npx -y multisphere-mcp@latest` after publishing the npm package.
+- `.mcp.json` — bundled MCP server config. Server key is `workspace` (not `multisphere` — that doubled with the plugin name and produced ugly `plugin:multisphere:multisphere` displays). Spawns the server via `npx -y multisphere-mcp@latest` — the npm package is the source of truth, no local build needed. **No env block.** That means `MULTISPHERE_CLIENT` is NOT auto-set by the plugin (and can't be, since the same `.mcp.json` is read by both Claude Code and Cowork — there's no place to put a per-client value). See "Identity setup for users" below.
 - `manifest.json` (root) — fallback MCPB manifest for non-plugin MCP hosts. Same MCP server, different install surface. `user_config` for agent identity, platform-specific PATH overrides so `simple-git` can find the system `git`. Sets `MULTISPHERE_CLIENT=cowork`. Not the primary install path now that Cowork supports plugins natively.
 - `scripts/build-mcpb.sh` — builds the fallback `.mcpb`. Stages, `npm ci --omit=dev`, `npx @anthropic-ai/mcpb pack`. **Developer tool, not user-facing.**
 - `skills/a2a/SKILL.md` — the protocol skill. Skill folder name = skill id (`a2a`). Plugin namespacing → `/multisphere:a2a`. Frontmatter `name:` must match the folder. Loaded by both Claude Code AND Cowork because both support the plugin format.
@@ -50,6 +50,25 @@ The plugin format (`.claude-plugin/plugin.json` + `.claude-plugin/marketplace.js
 - Default branch: `main`.
 - Don't push without being asked.
 - `mcp-server/dist/` stays gitignored — the server is published to npm (`multisphere-mcp`) and the plugin's `.mcp.json` invokes it via `npx -y multisphere-mcp@latest`. No build artifacts in the repo.
+
+## Identity setup for users
+
+Because `.mcp.json` can't deliver a per-client `MULTISPHERE_CLIENT` env var (same file in both clients), users have to set identity one of three ways:
+
+1. **Explicit `agent_id` in `~/.multisphere/identity.json`** (simplest, identical across clients on this machine):
+   ```json
+   { "agent_id": "jamie", "agent_name": "Jamie", "agent_email": "jamie@unicity-labs.com" }
+   ```
+   Both Claude Code and Cowork commit/journal as `jamie`. No client suffix. Works without any env var.
+
+2. **`user_slug` in `identity.json` + per-client env var** (gives `<user>-<client>` agent IDs):
+   - `~/.multisphere/identity.json`: `{ "user_slug": "jamie", "agent_name": "Jamie", "agent_email": "..." }`
+   - Claude Code: set `MULTISPHERE_CLIENT=claude-code` in your shell before launching `claude`.
+   - Cowork: open Customize → Plugins → Multisphere → Connectors → workspace → Environment Variables, add `MULTISPHERE_CLIENT=cowork`.
+
+3. **Full env override**: set `MULTISPHERE_AGENT_ID/_NAME/_EMAIL` directly. Skips file lookups entirely.
+
+The protocol helpers (`journal_append`, `inbox_add`, `inbox_close`, `whats_new`) call `assertIdentity` and fail loudly if identity is missing/empty. `workspace_init` does the same. Empty signatures should never land in journal/inbox files anymore.
 
 ## Releasing — version bumps matter
 

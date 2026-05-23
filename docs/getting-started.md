@@ -46,15 +46,27 @@ If you get an empty workspaces array, the plugin loaded. If the tool isn't prese
 
 ## 2. Configure your agent identity
 
-Identity is resolved per-client (so the same machine can host `jamie-claude-code` and `jamie-cowork` without conflict). Resolution order:
+The plugin can't set per-client identity automatically (Claude Code and Cowork read the same `.mcp.json`, so there's no place to put a per-client value). Pick one of three setups:
 
-1. **`MULTISPHERE_AGENT_ID`/`_NAME`/`_EMAIL` env vars** — highest priority.
-2. **`~/.multisphere/identity.<client>.json`** — per-client identity file. The plugin sets `MULTISPHERE_CLIENT` automatically (`claude-code` or `cowork`).
-3. **`~/.multisphere/identity.json`** — default. If it has `user_slug` instead of `agent_id`, the server derives `agent_id` as `<user_slug>-<client>`.
+### Easiest: shared identity across both clients
 
-Workspaces are stored separately at **`~/.multisphere/workspaces.json`** and shared across all clients on the machine. Identity files are never written by the server.
+Create `~/.multisphere/identity.json` with an explicit `agent_id`:
 
-### Easiest setup: one identity.json with auto-derivation
+```json
+{
+  "agent_id": "jamie",
+  "agent_name": "Jamie",
+  "agent_email": "jamie@unicity-labs.com"
+}
+```
+
+Both Claude Code and Cowork will commit/journal as `jamie`. No env var needed. Loses the per-client distinction (you can't tell from a commit which client made it), which is fine for solo use.
+
+### Distinct per-client identity (`<user>-<client>` convention)
+
+Two pieces:
+
+**1. Create `~/.multisphere/identity.json` with `user_slug` instead of `agent_id`:**
 
 ```json
 {
@@ -64,21 +76,40 @@ Workspaces are stored separately at **`~/.multisphere/workspaces.json`** and sha
 }
 ```
 
-Covers every client on the machine — Claude Code becomes `jamie-claude-code`, Cowork becomes `jamie-cowork`, and so on.
+**2. Set `MULTISPHERE_CLIENT` per-client:**
 
-### Per-client override
+- **Claude Code:** in your shell rc (`~/.zshrc` or `~/.bashrc`):
+  ```bash
+  export MULTISPHERE_CLIENT=claude-code
+  ```
+  Then launch `claude` from that shell. Verify with `echo $MULTISPHERE_CLIENT`.
 
-If you want a client's identity to differ — e.g. a different email — create `~/.multisphere/identity.<client>.json`:
+- **Cowork:** Customize sidebar → **Plugins** → **Multisphere** → **Connectors** → **workspace** → **Environment Variables** → add `MULTISPHERE_CLIENT=cowork`. Restart Cowork.
 
-```json
-{
-  "agent_id": "jamie-cowork",
-  "agent_name": "Jamie (via Cowork)",
-  "agent_email": "jamie@unicity-labs.com"
-}
+Then your agent_id will resolve to `jamie-claude-code` in Claude Code and `jamie-cowork` in Cowork.
+
+### Full env override (test/CI)
+
+Skip files entirely:
+
+```bash
+export MULTISPHERE_AGENT_ID=jamie-claude-code
+export MULTISPHERE_AGENT_NAME=Jamie
+export MULTISPHERE_AGENT_EMAIL=jamie@unicity-labs.com
 ```
 
-The naming convention is `<user>-<client>`. The user-slug suffix matters because journal entries and git commits are signed with `agent_id`, and the team needs to be able to tell two of your agents apart in a busy workspace.
+Whatever's in the env wins over any file.
+
+### Resolution order (full precedence)
+
+1. Env vars (`MULTISPHERE_AGENT_ID/_NAME/_EMAIL`) — highest.
+2. `~/.multisphere/identity.<MULTISPHERE_CLIENT>.json` (e.g. `identity.cowork.json`) — only checked if `MULTISPHERE_CLIENT` is set.
+3. `~/.multisphere/identity.json` — has `agent_id`, used directly. Has `user_slug` + `MULTISPHERE_CLIENT` is set, derives `<user_slug>-<client>`.
+4. Legacy `~/.multisphere/config.json` — backward compatibility.
+
+Workspaces live separately at `~/.multisphere/workspaces.json`, shared across clients. The server only writes to that file; identity files are never written.
+
+**If identity is missing or empty, every protocol tool (`journal_append`, `inbox_add`, `whats_new`, `workspace_init`) throws with a message telling you what to do.** No silent empty signatures.
 
 ## 3. Verify the install
 
