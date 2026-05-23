@@ -46,10 +46,27 @@ The plugin format (`.claude-plugin/plugin.json` + `.claude-plugin/marketplace.js
 
 ## Git
 
-- Remote: `s3remote` (S3-backed git remote). When ready for public distribution, mirror to GitHub at `unicity-labs/multisphere` — that's where the plugin marketplace will resolve from.
+- Remotes: `origin` (`github.com:unicitynetwork/multisphere`, public) and `s3remote` (`s3://jvs-git-remote/multisphere`).
 - Default branch: `main`.
 - Don't push without being asked.
-- Don't commit `mcp-server/dist/` to the **dev** branch — `.gitignore` excludes it. For plugin **distribution** we may need to ship built artifacts (until we publish `multisphere-mcp` to npm and switch `.mcp.json` to npx); revisit when we publish.
+- `mcp-server/dist/` stays gitignored — the server is published to npm (`multisphere-mcp`) and the plugin's `.mcp.json` invokes it via `npx -y multisphere-mcp@latest`. No build artifacts in the repo.
+
+## Releasing — version bumps matter
+
+Plugin updates **do not** propagate to existing Cowork/Claude Code installs automatically when the plugin's git history changes. The plugin manager pins on the version in `.claude-plugin/plugin.json`. So when you change anything in the plugin (`.mcp.json`, skills, plugin.json itself, the workspace template):
+
+1. Bump the patch version in `.claude-plugin/plugin.json` (e.g. `0.1.0` → `0.1.1`).
+2. Commit + push.
+
+Without that bump, users have to uninstall + reinstall the **whole marketplace** to pick up the change (jamie confirmed this empirically — uninstalling the single plugin isn't enough; the marketplace cache is also stale).
+
+For changes to the **MCP server itself** (`mcp-server/src/**`):
+
+1. Bump the version in `mcp-server/package.json`.
+2. `cd mcp-server && npm run build && npm publish --otp=<code>`.
+3. Existing installs pick up the new server on the next `npx -y multisphere-mcp@latest` resolution — no plugin-side action needed unless `.mcp.json` itself changed.
+
+Practical: bump both versions in lockstep on most changes. Easier to reason about and keeps the surface consistent.
 
 ## Build and run
 
