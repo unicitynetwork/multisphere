@@ -33,3 +33,5 @@ build/
 # Tooling
 .tsc-out/
 coverage/
+.build/
+*.mcpb

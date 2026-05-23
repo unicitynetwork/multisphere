@@ -14,14 +14,28 @@ const DEFAULT_CONFIG: MultisphereConfig = {
   active_workspace: null,
 };
 
+function applyEnvOverrides(cfg: MultisphereConfig): MultisphereConfig {
+  // Env vars override the JSON file. This is how MCPB user_config flows in
+  // (Cowork / Claude-Desktop-style clients), and it's also useful for testing.
+  const id = process.env.MULTISPHERE_AGENT_ID;
+  const name = process.env.MULTISPHERE_AGENT_NAME;
+  const email = process.env.MULTISPHERE_AGENT_EMAIL;
+  return {
+    ...cfg,
+    agent_id: id && id.length > 0 ? id : cfg.agent_id,
+    agent_name: name && name.length > 0 ? name : cfg.agent_name,
+    agent_email: email && email.length > 0 ? email : cfg.agent_email,
+  };
+}
+
 export async function loadConfig(): Promise<MultisphereConfig> {
   try {
     const raw = await fs.readFile(CONFIG_FILE, 'utf8');
     const parsed = JSON.parse(raw) as MultisphereConfig;
-    return { ...DEFAULT_CONFIG, ...parsed };
+    return applyEnvOverrides({ ...DEFAULT_CONFIG, ...parsed });
   } catch (err: unknown) {
     if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
-      return { ...DEFAULT_CONFIG };
+      return applyEnvOverrides({ ...DEFAULT_CONFIG });
     }
     throw err;
   }
@@ -46,7 +60,7 @@ export function getActiveWorkspace(cfg: MultisphereConfig): { name: string; ws: 
 export function assertIdentity(cfg: MultisphereConfig): void {
   if (!cfg.agent_id || !cfg.agent_name || !cfg.agent_email) {
     throw new Error(
-      'Agent identity not configured. Edit ~/.multisphere/config.json to set agent_id, agent_name, and agent_email.',
+      'Agent identity not configured. Either set MULTISPHERE_AGENT_ID/_NAME/_EMAIL env vars (Cowork / MCPB user_config does this for you), or populate ~/.multisphere/config.json.',
     );
   }
 }

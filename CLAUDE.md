@@ -2,15 +2,26 @@
 
 You are working on the source of [Multisphere](README.md): a Claude Code plugin that ships the `a2a` skill (agent-to-agent drop-board protocol) and the `multisphere-mcp` MCP server. **This is not a multisphere workspace itself** — the layout here does not have `journal.md`, `inbox.md`, etc. Don't apply the `a2a` protocol to this repo.
 
+## Two distribution paths, one server
+
+Multisphere ships in two installable shapes from the same source:
+
+1. **Claude Code plugin** — `.claude-plugin/plugin.json` + `.claude-plugin/marketplace.json` + `.mcp.json`. Installed via `/plugin install multisphere@multisphere`. Bundles the skill AND boots the MCP server.
+2. **MCPB bundle** — `manifest.json` at repo root, packed by `scripts/build-mcpb.sh` into `.build/dist/multisphere-X.Y.Z.mcpb`. Installed by drag-drop in Cowork / Claude Desktop. Bundles ONLY the MCP server (MCPB doesn't carry skills). Identity flows through `user_config` → env vars.
+
+Cowork is the real target for the Desktop form factor — vanilla Claude Desktop's sandbox is too tight for workspace clones to live on the user's disk where the user can also see them.
+
 ## Layout
 
-- `.claude-plugin/plugin.json` — plugin manifest. Owns identity (`name: "multisphere"`), version, description.
+- `.claude-plugin/plugin.json` — Claude Code plugin manifest. Owns identity (`name: "multisphere"`), version, description.
 - `.claude-plugin/marketplace.json` — single-plugin marketplace pointing at `./`. This repo is its own marketplace.
-- `.mcp.json` — bundles the MCP server. Currently uses `node ${CLAUDE_PLUGIN_ROOT}/mcp-server/dist/index.js`. **Switch to `npx -y multisphere-mcp@latest` after publishing the npm package.**
-- `skills/a2a/SKILL.md` — the protocol skill. Skill folder name = skill id (`a2a`). Plugin namespacing makes the slash command `/multisphere:a2a`. The frontmatter `name:` field must match the folder.
-- `mcp-server/` — TypeScript, Node 20+, builds to `dist/`. Entry: `src/index.ts`. Tool implementations split into `workspace.ts`, `git-ops.ts`, `fs-ops.ts`, `protocol.ts`. Uses `simple-git` for git, `zod` for schemas.
-- `workspace-template/` — the cloneable seed for a new workspace. Treat the files as templates: changes here propagate to every new workspace anyone creates.
-- `docs/` — concept, product, implementation plan (already written), plus `getting-started.md` and `protocol.md`. The first three are the spec; if you change behaviour, update the implementation plan too.
+- `.mcp.json` — Claude Code path: boots the MCP server via `node ${CLAUDE_PLUGIN_ROOT}/mcp-server/dist/index.js`. **Switch to `npx -y multisphere-mcp@latest` after publishing.**
+- `manifest.json` — MCPB path. Declares the MCP server entry, `user_config` for `agent_id`/`agent_name`/`agent_email`, and platform-specific PATH overrides so `simple-git` can find the system `git` binary on macOS / Linux / Windows.
+- `scripts/build-mcpb.sh` — builds the `.mcpb`. Stages, runs `npm ci --omit=dev` in the stage, then `npx @anthropic-ai/mcpb pack`.
+- `skills/a2a/SKILL.md` — the protocol skill. Skill folder name = skill id (`a2a`). Plugin namespacing → `/multisphere:a2a`. The frontmatter `name:` field must match the folder. Only Claude Code consumes this; Cowork users paste it into project instructions manually.
+- `mcp-server/` — TypeScript, Node 20+, builds to `dist/`. Entry: `src/index.ts`. Tools split into `workspace.ts`, `git-ops.ts`, `fs-ops.ts`, `protocol.ts`. Uses `simple-git` (system git binary) and `zod`. Identity comes from `MULTISPHERE_AGENT_ID/_NAME/_EMAIL` env vars (set by MCPB user_config) **or** `~/.multisphere/config.json` — env wins.
+- `workspace-template/` — cloneable seed for a new workspace.
+- `docs/` — concept, product, implementation plan, getting-started, protocol.
 
 ## Plugin format constraints
 

@@ -1,6 +1,8 @@
-# Multiplayer Agents — Concept
+# Multisphere — Concept
 
 Single-player agents are done. Every chatbot has MCP now. The next move is multiplayer.
+
+Multisphere is the name. Ships as a Claude Code plugin (and as a Claude Desktop MCPB bundle, eventually) that bundles two things: an MCP server (`multisphere-mcp`) that owns your local clone of a shared workspace, and a skill (`a2a` — agent-to-agent) that teaches your agent the drop-board protocol.
 
 ## The idea
 
@@ -47,10 +49,12 @@ The workspace has two files at the root that every agent must touch on every ses
 `journal.md` is the audit trail. Append-only. Every entry is signed and timestamped. An entry says what the agent did, what it tried, what it failed at, and what it's leaving open. Example:
 
 ```
-## 2026-05-22 14:30 — jamie/claude-code
+## 2026-05-22 14:30 — jamie-claude-code (Jamie)
 Pulled latest research drops. Built draft v2 of slides 4–7.
 Couldn't find the 2024 comp data — left a TODO in inbox.
 ```
+
+Agent id format is `<user>-<client>`. The MCP server signs every journal entry and every commit with it.
 
 `inbox.md` is the live queue. Open questions, requests to specific agents, anything still hanging. Anyone can add. Anyone can claim. When an item closes, the closing agent strikes it and points back to the journal entry that resolved it.
 
@@ -63,17 +67,19 @@ The protocol every agent follows, every time:
 
 This is enforced by the skill file. It's the first thing the agent reads when it enters the workspace, and the last thing it does before leaving. Without this, four agents on one repo overwrite each other quietly. With it, every move leaves a trace and every open thread is visible.
 
-## Minimal MVP — three pieces
+## Minimal MVP — three pieces, one install
 
 1. **A shared git repo.** Each user has a local clone — the folder workspace on disk. The remote (GitHub or anywhere) is where everyone meets. The workspace has an opinionated layout — see below. Markdown for anything that isn't a binary asset. Commit author tells you which agent produced what.
 
-2. **An MCP server.** Runs locally, wraps git. The agent never has to shell out. It exposes the git operations an agent needs to live in a repo: `status`, `fetch`, `pull`, `diff`, `log`, `add`, `commit`, `push`. Plus filesystem helpers on the local clone — `read`, `write`, `list`, `search`. Plus protocol helpers — `journal_append`, `inbox_add`, `inbox_close` — so agents don't hand-format markdown. This is what lets Claude Desktop, Cowork, and anything else without bash join the same repo as Claude Code. Same workspace, same git, every client treated equally. Branch and PR operations land in v2 when we need them.
+2. **An MCP server (`multisphere-mcp`).** Runs locally, wraps git. The agent never has to shell out. It exposes the git operations an agent needs to live in a repo: `status`, `fetch`, `pull`, `diff`, `log`, `add`, `commit`, `push`. Plus filesystem helpers on the local clone — `read`, `write`, `list`, `search`. Plus protocol helpers — `journal_append`, `inbox_add`, `inbox_close`, `whats_new` — so agents don't hand-format markdown and don't have to figure out what changed since their last visit. Same workspace, same git, every client treated equally. Branch and PR operations land in v2 when we need them.
 
-3. **A skill file.** Three things in it. First, the git playbook — fetch and pull on entry, commit with a clear message, push to main, what to do if a pull surfaces conflicts. Second, the metadata conventions — what belongs in `journal.md`, what belongs in `inbox.md`, the format of an entry, when to add, when to close. Third, the workspace layout — what goes in each folder and what doesn't. Behavioural rules sit on top of all of that: don't act on someone else's drop unless your user asks, don't volunteer personal context to the group.
+3. **A skill (`a2a`).** Three things in it. First, the git playbook — fetch and pull on entry, commit with a clear message, push to main, what to do if a pull surfaces conflicts. Second, the metadata conventions — what belongs in `journal.md`, what belongs in `inbox.md`, the format of an entry, when to add, when to close. Third, the workspace layout — what goes in each folder and what doesn't. Behavioural rules sit on top of all of that: don't act on someone else's drop unless your user asks, don't volunteer personal context to the group.
+
+The whole bundle ships as one plugin. In Claude Code: `/plugin install multisphere@multisphere` and you're done — the MCP server boots, the skill activates, the slash command `/multisphere:a2a` is yours. Claude Desktop gets the same payload via an MCPB bundle (different format, same contents). Cowork and anything else without first-class plugin support gets the manual JSON-config path — same server, same skill, just wired by hand.
 
 ## Workspace layout
 
-Opinionated. Every multiplayer workspace looks like this so any agent that's seen one knows its way around any other.
+Opinionated. Every multisphere workspace looks like this so any agent that's seen one knows its way around any other.
 
 ```
 .
@@ -84,7 +90,8 @@ Opinionated. Every multiplayer workspace looks like this so any agent that's see
 ├── drafts/            # work in progress
 ├── comments/          # notes and feedback on specific items
 ├── decisions/         # durable choices, ADR-style
-└── assets/            # binaries, images, PDFs
+├── assets/            # binaries, images, PDFs
+└── .pointers/         # per-agent last-read state (managed by the server)
 ```
 
 `README.md` is the workspace's introduction — what we're building, who's involved, anything an arriving agent needs to know.
@@ -99,16 +106,24 @@ Opinionated. Every multiplayer workspace looks like this so any agent that's see
 
 `assets/` is for binaries — images, PDFs, anything that isn't readable markdown.
 
+`.pointers/` is one JSON file per agent id, tracking the sha that agent last saw. `whats_new` reads it on entry and updates it on exit. Committed to the repo so the same agent can move between clients without losing its place.
+
 Plug Claude Code, Claude Desktop, or Cowork into it. Try it on SIF. Four of us, one repo, four agents.
 
 ## Open questions
 
 Do we need any agent-to-agent at all, or is the drop-board enough? My bet — enough.
 
-How does an agent know what's new since its last visit? Probably a per-agent last-read pointer with a git diff. Cheap and simple.
+~~How does an agent know what's new since its last visit?~~ Solved. Per-agent JSON pointers under `.pointers/`, diffed against current HEAD by the `whats_new` tool.
+
+How portable is the MCP server across sandbox profiles? Claude Code runs it fine; Claude Desktop's child-process sandbox is looser than Code's but still has a minimal PATH and may not expose system `git` cleanly. Open question whether we keep `simple-git` (system binary) or move to `isomorphic-git` (pure JS, zero external dependency) before public release.
 
 When does this get a real home in Sphere — UI, registry, billing, the rest? Later. Prove the loop first.
 
+## Status
+
+Repo stood up. MCP server written and smoke-tested (20 tools across workspace, git, fs, and protocol). Skill written and namespaced as `/multisphere:a2a`. Workspace template seeded. Claude Code plugin manifest in place; MCPB bundle for Claude Desktop pending.
+
 ## Next step
 
-Stand up the repo. Write the skill file. Write the MCP server — small. Use it on SIF this week.
+Run it on SIF this week. Four of us, one repo, four agents.

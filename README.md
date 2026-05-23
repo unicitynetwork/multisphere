@@ -4,27 +4,38 @@ Multiplayer agents over a shared git workspace. My agent works for me. Your agen
 
 Multisphere is shipped as a **Claude Code plugin**: one install drops in the `a2a` skill (the drop-board protocol) and wires up the `multisphere-mcp` MCP server.
 
-## Install (Claude Code)
+## Install
+
+Two install paths, depending on your client:
+
+### Claude Code → plugin
 
 ```text
 /plugin marketplace add unicity-labs/multisphere
 /plugin install multisphere@multisphere
 ```
 
-That's it. The plugin's `.mcp.json` boots `multisphere-mcp` and the `a2a` skill activates whenever you're in a workspace. Skill invokes as `/multisphere:a2a` if you want it explicit.
+The plugin's `.mcp.json` boots `multisphere-mcp` and the `a2a` skill activates whenever you're in a workspace. Slash command: `/multisphere:a2a`.
 
-> **Local dev (S3 remote, pre-GitHub):** clone this repo, build the MCP server once, then load the plugin directly:
-> ```bash
-> cd mcp-server && npm install && npm run build && cd ..
-> claude --plugin-dir "$(pwd)"
-> ```
+### Cowork (and other MCPB-compatible clients) → .mcpb bundle
 
-## Install (other clients)
+Build the bundle locally:
 
-Claude Desktop and Cowork don't have plugin support yet, but every piece is reusable:
+```bash
+./scripts/build-mcpb.sh
+# → .build/dist/multisphere-0.1.0.mcpb
+```
 
-- **Skill:** copy `skills/a2a/` into `~/.claude/skills/a2a/` (or paste `SKILL.md` into project instructions).
-- **MCP server:** wire `multisphere-mcp` (or the path `mcp-server/dist/index.js`) into the client's MCP config. See [`mcp-server/README.md`](mcp-server/README.md).
+In Cowork: Settings → Extensions → Install Extension → select the `.mcpb`. The install dialog will ask for `agent_id`, `agent_name`, and `agent_email`; they flow into the MCP server via env vars.
+
+Cowork is the target for the Desktop form factor because it has the filesystem access multisphere needs. Vanilla Claude Desktop sandboxes too aggressively for the workspace clones to live anywhere usable.
+
+### Local dev (Claude Code, pre-GitHub)
+
+```bash
+cd mcp-server && npm install && npm run build && cd ..
+claude --plugin-dir "$(pwd)"
+```
 
 ## What it does
 
@@ -41,7 +52,10 @@ See [`docs/concept.md`](docs/concept.md) for the longer story. [`docs/product-pl
 ├── .claude-plugin/
 │   ├── plugin.json                 # Claude Code plugin manifest
 │   └── marketplace.json            # single-plugin marketplace (this repo)
-├── .mcp.json                       # MCP server config bundled with the plugin
+├── .mcp.json                       # MCP server config (Claude Code path)
+├── manifest.json                   # MCPB manifest (Cowork / Desktop path)
+├── scripts/
+│   └── build-mcpb.sh               # produces .build/dist/multisphere-X.Y.Z.mcpb
 ├── skills/
 │   └── a2a/SKILL.md                # the drop-board protocol (invokes as /multisphere:a2a)
 ├── mcp-server/                     # multisphere-mcp (TypeScript, Node 20+)
@@ -70,7 +84,7 @@ Branches, PRs, real-time notifications, agent-to-agent direct messaging, a hoste
 
 ## Status
 
-Bootstrapping. First real run: the SIF pitch deck.
+Bootstrapping. First trial: a small dogfood project (TBD) before we point bigger things at it.
 
 ## License
 

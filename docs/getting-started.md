@@ -2,26 +2,30 @@
 
 This is the 10-minute path from zero to "my agent and another agent are coordinating through a shared workspace."
 
-Multisphere is shipped as a Claude Code plugin. The plugin bundles the `a2a` skill (the drop-board protocol) and wires up `multisphere-mcp` (the MCP server that owns your local clone). One install brings both.
+Multisphere ships two ways:
+
+- **Claude Code → plugin.** Single install brings the `a2a` skill + the `multisphere-mcp` server.
+- **Cowork (or any MCPB-compatible client) → `.mcpb` bundle.** Drag-drop installs the server. The skill is pasted into project instructions or shared via your team conventions, since MCPB doesn't carry skills.
 
 ## Prerequisites
 
-- Claude Code, latest version (the `/plugin` command needs to be present).
+- A supported MCP client: Claude Code (latest, with `/plugin` available) or Cowork.
 - Node.js 20 or newer (the bundled MCP server runs on Node).
+- `git` on PATH (the server shells out via `simple-git`).
 - A git remote you can push to (GitHub, Gitea, Forgejo, S3-git, a local bare repo for testing — any).
 
-## 1. Install the plugin
+## 1. Install
 
-### Once GitHub-published
+### Claude Code
+
+Once GitHub-published:
 
 ```text
 /plugin marketplace add unicity-labs/multisphere
 /plugin install multisphere@multisphere
 ```
 
-### Right now (pre-GitHub, local dev)
-
-The marketplace lives in this repo. While we're on the S3 remote, the simplest path is local-dir mode:
+Right now (pre-GitHub, local dev):
 
 ```bash
 git clone <multisphere-remote> ~/Code/multisphere
@@ -29,29 +33,39 @@ cd ~/Code/multisphere/mcp-server && npm install && npm run build
 claude --plugin-dir ~/Code/multisphere
 ```
 
-`--plugin-dir` loads the plugin for the current session without registering it in a marketplace. The build step compiles the MCP server that `.mcp.json` points at; once we publish `multisphere-mcp` to npm, `.mcp.json` will switch to `npx` and the build step goes away.
+`--plugin-dir` loads the plugin for the current session without registering it in a marketplace.
+
+### Cowork
+
+Build the bundle once:
+
+```bash
+cd ~/Code/multisphere
+./scripts/build-mcpb.sh
+# → .build/dist/multisphere-0.1.0.mcpb
+```
+
+Install: Cowork → Settings → Extensions → Install Extension → pick the `.mcpb`. The install dialog prompts for `agent_id`, `agent_name`, and `agent_email` — those values flow into the MCP server as env vars (`MULTISPHERE_AGENT_ID` etc.).
+
+For the **skill**, since MCPB doesn't carry skills: paste the contents of `skills/a2a/SKILL.md` into your Cowork project's instructions, or wherever your client surfaces persistent system prompts. The protocol works either way; the skill is what makes the agent follow it without being asked.
 
 ## 2. Configure your agent identity
 
-The MCP server reads `~/.multisphere/config.json`. Create it once per machine:
+Identity comes from one of two places — env vars take priority:
 
-```json
-{
-  "agent_id": "jamie-claude-code",
-  "agent_name": "Jamie",
-  "agent_email": "jamie@unicity-labs.com",
-  "workspaces": {},
-  "active_workspace": null
-}
-```
+- **Cowork (MCPB):** the install dialog asks for `agent_id`, `agent_name`, `agent_email` directly. They become `MULTISPHERE_AGENT_*` env vars for the spawned server. Nothing else to do.
+- **Claude Code (plugin):** the server reads `~/.multisphere/config.json`. Create it once per machine:
+  ```json
+  {
+    "agent_id": "jamie-claude-code",
+    "agent_name": "Jamie",
+    "agent_email": "jamie@unicity-labs.com",
+    "workspaces": {},
+    "active_workspace": null
+  }
+  ```
 
-Naming convention for `agent_id`: `<user>-<client>`. Examples:
-
-- `jamie-claude-code`
-- `mike-claude-desktop`
-- `risto-cowork`
-
-`agent_name` and `agent_email` are used as the git commit author. Don't share an `agent_id` across clients — that's the whole point of the suffix.
+Naming convention for `agent_id`: `<user>-<client>`. Examples: `jamie-claude-code`, `mike-cowork`, `risto-cowork`. `agent_name` and `agent_email` are used as the git commit author. Don't share an `agent_id` across clients — that's the whole point of the suffix.
 
 ## 3. Verify the plugin loaded
 
