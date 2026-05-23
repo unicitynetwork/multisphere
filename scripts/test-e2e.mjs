@@ -218,6 +218,39 @@ check(
 );
 delete process.env.MULTISPHERE_CLIENT;
 
+// 13. Detected clientInfo (from MCP initialize) drives derivation when env var is unset.
+const { setDetectedClient, normalizeClientName } = await import(`${MCP_DIST}/config.js`);
+
+check('normalize: claude-ai → cowork', normalizeClientName('claude-ai') === 'cowork');
+check('normalize: claude-desktop → cowork', normalizeClientName('claude-desktop') === 'cowork');
+check('normalize: Claude Code 2.x → claude-code', normalizeClientName('Claude Code 2.x') === 'claude-code');
+check('normalize: unknown client stays as slug', normalizeClientName('SomeOtherClient/1.0') === 'someotherclient-1-0');
+
+setDetectedClient('claude-ai');
+const cwAuto = await resolveIdentity();
+check(
+  'detected claude-ai + user_slug → jamie-cowork (no env var needed)',
+  cwAuto.agent_id === 'jamie-cowork',
+);
+
+setDetectedClient('claude-code');
+const ccAuto = await resolveIdentity();
+check(
+  'detected claude-code + user_slug → jamie-claude-code',
+  ccAuto.agent_id === 'jamie-claude-code',
+);
+
+// 14. Env var still wins over detected client.
+setDetectedClient('claude-ai');
+process.env.MULTISPHERE_CLIENT = 'claude-code';
+const envBeatsAuto = await resolveIdentity();
+check(
+  'MULTISPHERE_CLIENT env beats detected client',
+  envBeatsAuto.agent_id === 'jamie-claude-code',
+);
+delete process.env.MULTISPHERE_CLIENT;
+setDetectedClient(undefined);
+
 if (failures > 0) {
   console.error(`\n✗ ${failures} check(s) failed`);
   process.exit(1);

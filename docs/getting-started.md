@@ -46,27 +46,9 @@ If you get an empty workspaces array, the plugin loaded. If the tool isn't prese
 
 ## 2. Configure your agent identity
 
-The plugin can't set per-client identity automatically (Claude Code and Cowork read the same `.mcp.json`, so there's no place to put a per-client value). Pick one of three setups:
+### Easiest setup (recommended, works from v0.1.2)
 
-### Easiest: shared identity across both clients
-
-Create `~/.multisphere/identity.json` with an explicit `agent_id`:
-
-```json
-{
-  "agent_id": "jamie",
-  "agent_name": "Jamie",
-  "agent_email": "jamie@unicity-labs.com"
-}
-```
-
-Both Claude Code and Cowork will commit/journal as `jamie`. No env var needed. Loses the per-client distinction (you can't tell from a commit which client made it), which is fine for solo use.
-
-### Distinct per-client identity (`<user>-<client>` convention)
-
-Two pieces:
-
-**1. Create `~/.multisphere/identity.json` with `user_slug` instead of `agent_id`:**
+Create `~/.multisphere/identity.json`:
 
 ```json
 {
@@ -76,21 +58,34 @@ Two pieces:
 }
 ```
 
-**2. Set `MULTISPHERE_CLIENT` per-client:**
+That's it. Done. Both clients work, no env vars needed.
 
-- **Claude Code:** in your shell rc (`~/.zshrc` or `~/.bashrc`):
-  ```bash
-  export MULTISPHERE_CLIENT=claude-code
-  ```
-  Then launch `claude` from that shell. Verify with `echo $MULTISPHERE_CLIENT`.
+The server detects which client called it (via the MCP `initialize` handshake's `clientInfo.name`) and combines that with your `user_slug` to derive the agent_id automatically:
 
-- **Cowork:** Customize sidebar → **Plugins** → **Multisphere** → **Connectors** → **workspace** → **Environment Variables** → add `MULTISPHERE_CLIENT=cowork`. Restart Cowork.
+- In **Claude Code** → `jamie-claude-code`
+- In **Cowork** → `jamie-cowork`
+- In other MCP hosts → `jamie-<slugified-client-name>`
 
-Then your agent_id will resolve to `jamie-claude-code` in Claude Code and `jamie-cowork` in Cowork.
+Cowork and Claude Desktop both identify themselves as `claude-ai` in the MCP handshake; the server normalizes both to `cowork`.
 
-### Full env override (test/CI)
+### Per-client overrides (if you need them)
 
-Skip files entirely:
+If you want a particular client's identity to differ from the auto-derived form, drop a `~/.multisphere/identity.<client>.json` file:
+
+```json
+// ~/.multisphere/identity.cowork.json
+{
+  "agent_id": "jamie-cowork",
+  "agent_name": "Jamie (via Cowork)",
+  "agent_email": "jamie+cowork@unicity-labs.com"
+}
+```
+
+The server picks this over `identity.json` when the detected (or env-set) client matches the file's suffix.
+
+### Full env override (test/CI/explicit)
+
+To bypass file lookups entirely:
 
 ```bash
 export MULTISPHERE_AGENT_ID=jamie-claude-code
@@ -98,18 +93,19 @@ export MULTISPHERE_AGENT_NAME=Jamie
 export MULTISPHERE_AGENT_EMAIL=jamie@unicity-labs.com
 ```
 
-Whatever's in the env wins over any file.
+`MULTISPHERE_CLIENT=<name>` overrides auto-detection if you want to force a particular client suffix.
 
 ### Resolution order (full precedence)
 
-1. Env vars (`MULTISPHERE_AGENT_ID/_NAME/_EMAIL`) — highest.
-2. `~/.multisphere/identity.<MULTISPHERE_CLIENT>.json` (e.g. `identity.cowork.json`) — only checked if `MULTISPHERE_CLIENT` is set.
-3. `~/.multisphere/identity.json` — has `agent_id`, used directly. Has `user_slug` + `MULTISPHERE_CLIENT` is set, derives `<user_slug>-<client>`.
-4. Legacy `~/.multisphere/config.json` — backward compatibility.
+1. **`MULTISPHERE_AGENT_ID/_NAME/_EMAIL` env vars** — highest priority.
+2. **`MULTISPHERE_CLIENT` env var** (if set) **OR** the client name auto-detected from the MCP handshake.
+3. **`~/.multisphere/identity.<client>.json`** — per-client override file.
+4. **`~/.multisphere/identity.json`** — has `agent_id` → used directly; has `user_slug` → combined with detected/env client.
+5. **Legacy `~/.multisphere/config.json`** — backward compatibility.
 
-Workspaces live separately at `~/.multisphere/workspaces.json`, shared across clients. The server only writes to that file; identity files are never written.
+Workspaces live separately at `~/.multisphere/workspaces.json`, shared across clients. The server only writes to workspaces; identity files are never modified.
 
-**If identity is missing or empty, every protocol tool (`journal_append`, `inbox_add`, `whats_new`, `workspace_init`) throws with a message telling you what to do.** No silent empty signatures.
+**If identity is still empty after all that**, the protocol tools (`journal_append`, `inbox_add`, `whats_new`, `workspace_init`) throw a clear error pointing at what to do. No silent empty signatures.
 
 ## 3. Verify the install
 

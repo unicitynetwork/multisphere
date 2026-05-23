@@ -2,6 +2,9 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 
 import { workspaceInit, workspaceList, workspaceSwitch, workspaceInfo } from './workspace.js';
 import {
@@ -16,13 +19,27 @@ import {
 } from './git-ops.js';
 import { fsRead, fsWrite, fsList, fsSearch } from './fs-ops.js';
 import { journalAppend, inboxAdd, inboxClose, whatsNew } from './protocol.js';
+import { setDetectedClient } from './config.js';
 
-const VERSION = '0.1.0';
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const pkgPath = join(__dirname, '..', 'package.json');
+const VERSION: string = (JSON.parse(readFileSync(pkgPath, 'utf8')) as { version: string }).version;
 
 const server = new McpServer({
   name: 'multisphere',
   version: VERSION,
 });
+
+// Capture clientInfo from the MCP handshake so identity resolution can
+// auto-derive `<user_slug>-<client>` without the user setting MULTISPHERE_CLIENT.
+// Fires once, after the client sends `notifications/initialized`.
+server.server.oninitialized = () => {
+  const info = server.server.getClientVersion();
+  if (info?.name) {
+    setDetectedClient(info.name);
+    process.stderr.write(`multisphere-mcp: client="${info.name}" version="${info.version ?? '?'}"\n`);
+  }
+};
 
 function toResult(value: unknown) {
   return {

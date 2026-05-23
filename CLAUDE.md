@@ -53,22 +53,26 @@ The plugin format (`.claude-plugin/plugin.json` + `.claude-plugin/marketplace.js
 
 ## Identity setup for users
 
-Because `.mcp.json` can't deliver a per-client `MULTISPHERE_CLIENT` env var (same file in both clients), users have to set identity one of three ways:
+As of v0.1.2 the server auto-detects the calling client from the MCP `initialize` handshake's `clientInfo.name`. The detected name is normalized (`claude-ai` and `claude-desktop` both → `cowork`; `Claude Code N.x` → `claude-code`) and used as the fallback for `MULTISPHERE_CLIENT` when the env var isn't set.
 
-1. **Explicit `agent_id` in `~/.multisphere/identity.json`** (simplest, identical across clients on this machine):
-   ```json
-   { "agent_id": "jamie", "agent_name": "Jamie", "agent_email": "jamie@unicity-labs.com" }
-   ```
-   Both Claude Code and Cowork commit/journal as `jamie`. No client suffix. Works without any env var.
+**Recommended user setup**: a single `~/.multisphere/identity.json`:
 
-2. **`user_slug` in `identity.json` + per-client env var** (gives `<user>-<client>` agent IDs):
-   - `~/.multisphere/identity.json`: `{ "user_slug": "jamie", "agent_name": "Jamie", "agent_email": "..." }`
-   - Claude Code: set `MULTISPHERE_CLIENT=claude-code` in your shell before launching `claude`.
-   - Cowork: open Customize → Plugins → Multisphere → Connectors → workspace → Environment Variables, add `MULTISPHERE_CLIENT=cowork`.
+```json
+{ "user_slug": "jamie", "agent_name": "Jamie", "agent_email": "jamie@unicity-labs.com" }
+```
 
-3. **Full env override**: set `MULTISPHERE_AGENT_ID/_NAME/_EMAIL` directly. Skips file lookups entirely.
+The server derives `jamie-claude-code` in Claude Code and `jamie-cowork` in Cowork. No env vars needed.
 
-The protocol helpers (`journal_append`, `inbox_add`, `inbox_close`, `whats_new`) call `assertIdentity` and fail loudly if identity is missing/empty. `workspace_init` does the same. Empty signatures should never land in journal/inbox files anymore.
+**Override paths** (in priority order):
+
+1. `MULTISPHERE_AGENT_ID/_NAME/_EMAIL` env vars — full bypass.
+2. `MULTISPHERE_CLIENT` env var — forces a particular client suffix regardless of what the handshake reported.
+3. `~/.multisphere/identity.<client>.json` — per-client override file.
+4. Legacy `~/.multisphere/config.json` — backward compat.
+
+The protocol helpers (`journal_append`, `inbox_add`, `inbox_close`, `whats_new`) and `workspace_init` all call `assertIdentity` and throw with an actionable error if identity still can't be resolved (the error tells the user which client was detected and which files would satisfy it).
+
+**Implementation:** `src/index.ts` wires `server.server.oninitialized` to capture `clientInfo.name` via `setDetectedClient()`. `src/config.ts` exports `normalizeClientName()` (idempotent slug + special-case map) and uses the detected client as a fallback in `resolveIdentity()`. The env var still beats the detected value.
 
 ## Releasing — version bumps matter
 

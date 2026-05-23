@@ -18,6 +18,41 @@ function clientIdentityPath(client: string): string {
   return path.join(CONFIG_DIR, `identity.${client}.json`);
 }
 
+/**
+ * Client name detected from the MCP `initialize` handshake (clientInfo.name).
+ * Captured by src/index.ts's oninitialized hook. Used as a fallback for
+ * MULTISPHERE_CLIENT when the env var isn't set — so users only need
+ * user_slug in identity.json and the per-client distinction happens
+ * automatically across Cowork, Claude Code, etc.
+ */
+let detectedClient: string | undefined;
+
+/**
+ * Normalize an MCP clientInfo.name into the client-slug we use for
+ * identity files and agent_id suffixes. Known clients get friendly names;
+ * unknown clients fall back to a lowercased, hyphenated form.
+ */
+export function normalizeClientName(name: string): string {
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  // Cowork (and Claude Desktop) identify themselves as "claude-ai" over MCP.
+  // We map both to "cowork" because (a) Cowork is the supported Desktop form
+  // factor for multisphere, and (b) the user is already using "jamie-cowork"
+  // style agent_ids in journals and inboxes.
+  if (slug === 'claude-ai' || slug === 'claude-app' || slug === 'claude-desktop') {
+    return 'cowork';
+  }
+  if (slug.startsWith('claude-code')) return 'claude-code';
+  return slug;
+}
+
+export function setDetectedClient(name: string | undefined): void {
+  detectedClient = name ? normalizeClientName(name) : undefined;
+}
+
+export function getDetectedClient(): string | undefined {
+  return detectedClient;
+}
+
 const EMPTY_IDENTITY: Identity = { agent_id: '', agent_name: '', agent_email: '' };
 
 const EMPTY_WORKSPACES: WorkspacesFile = { workspaces: {}, active_workspace: null };
@@ -56,7 +91,9 @@ export async function resolveIdentity(): Promise<Identity> {
     return { agent_id: envId, agent_name: envName, agent_email: envEmail };
   }
 
-  const client = process.env.MULTISPHERE_CLIENT;
+  // Env var wins over auto-detection. Falls back to whatever the MCP
+  // initialize handshake reported (cowork → "cowork", claude-code → "claude-code", etc.)
+  const client = process.env.MULTISPHERE_CLIENT ?? detectedClient;
 
   if (client) {
     const perClient = await readJson<IdentityFile>(clientIdentityPath(client));
@@ -163,10 +200,16 @@ export function getActiveWorkspace(
 
 export function assertIdentity(cfg: MultisphereConfig): void {
   if (!cfg.agent_id || !cfg.agent_name || !cfg.agent_email) {
-    const client = process.env.MULTISPHERE_CLIENT;
+    const envClient = process.env.MULTISPHERE_CLIENT;
+    const client = envClient ?? detectedClient;
+    const sourceNote = envClient
+      ? `MULTISPHERE_CLIENT=${envClient}`
+      : detectedClient
+        ? `auto-detected client="${detectedClient}" from MCP clientInfo`
+        : 'no MULTISPHERE_CLIENT env var and no client detected from MCP handshake yet';
     const hint = client
-      ? `Create ~/.multisphere/identity.${client}.json with {agent_id, agent_name, agent_email}, OR create ~/.multisphere/identity.json with {user_slug, agent_name, agent_email} for auto-derivation, OR set MULTISPHERE_AGENT_ID/_NAME/_EMAIL env vars.`
-      : 'Set MULTISPHERE_AGENT_ID/_NAME/_EMAIL env vars (MCPB user_config does this), or create ~/.multisphere/identity.json with {agent_id, agent_name, agent_email}.';
+      ? `Detected ${sourceNote}. Either create ~/.multisphere/identity.${client}.json with {agent_id, agent_name, agent_email}, OR create ~/.multisphere/identity.json with {user_slug, agent_name, agent_email} (the server will derive agent_id as <user_slug>-${client}).`
+      : `${sourceNote}. Set MULTISPHERE_AGENT_ID/_NAME/_EMAIL env vars, or create ~/.multisphere/identity.json with explicit {agent_id, agent_name, agent_email}.`;
     throw new Error(`Agent identity not configured. ${hint}`);
   }
 }
