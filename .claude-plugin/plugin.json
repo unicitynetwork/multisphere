@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "multisphere",
   "displayName": "Multisphere",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Multiplayer agents over a shared git workspace. Ships the a2a skill (drop-board protocol) and the multisphere-mcp server.",
   "author": {
     "name": "Jamie Steiner",
@@ -18,5 +18,12 @@
     "git",
     "workspace",
     "mcp"
-  ]
+  ],
+  "mcpServers": {
+    "workspace": {
+      "command": "npx",
+      "args": ["-y", "multisphere-mcp@latest"]
+    }
+  },
+  "skills": "./skills/"
 }
