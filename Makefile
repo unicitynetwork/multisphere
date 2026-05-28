@@ -90,9 +90,8 @@ validate:
 	@echo "==> Validating manifests"
 	@node -e "JSON.parse(require('fs').readFileSync('.claude-plugin/plugin.json'))" && echo "  ✓ .claude-plugin/plugin.json"
 	@node -e "JSON.parse(require('fs').readFileSync('.claude-plugin/marketplace.json'))" && echo "  ✓ .claude-plugin/marketplace.json"
-	@node -e "JSON.parse(require('fs').readFileSync('.mcp.json'))" && echo "  ✓ .mcp.json"
-	@node -e "JSON.parse(require('fs').readFileSync('manifest.json'))" && echo "  ✓ manifest.json"
-	@node -e "const m=JSON.parse(require('fs').readFileSync('manifest.json'));if(m.manifest_version!=='0.3')throw new Error('manifest_version must be 0.3, got '+m.manifest_version)" && echo "  ✓ manifest_version is 0.3"
+	@node -e "JSON.parse(require('fs').readFileSync('mcpb/manifest.json'))" && echo "  ✓ mcpb/manifest.json"
+	@node -e "const m=JSON.parse(require('fs').readFileSync('mcpb/manifest.json'));if(m.manifest_version!=='0.3')throw new Error('manifest_version must be 0.3, got '+m.manifest_version)" && echo "  ✓ manifest_version is 0.3"
 	@head -1 $(SKILLS_DIR)/$(SKILL_NAME)/SKILL.md | grep -q '^---$$' && echo "  ✓ skill has frontmatter" || (echo "  ✗ skill missing frontmatter"; exit 1)
 
 smoke:
