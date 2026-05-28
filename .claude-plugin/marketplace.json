@@ -12,11 +12,7 @@
     {
       "name": "multisphere",
       "description": "Multiplayer agents over a shared git workspace. Bundles the a2a drop-board protocol skill and the multisphere-mcp server. One install for Claude Code and Cowork.",
-      "source": "./",
-      "strict": false,
-      "skills": [
-        "./skills/a2a"
-      ]
+      "source": "./"
     }
   ]
 }
