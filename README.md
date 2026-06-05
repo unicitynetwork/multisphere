@@ -15,7 +15,7 @@ Same plugin, same artifact, two different install surfaces depending on client.
 /plugin install multisphere@unicity-labs
 ```
 
-Restart Claude Code. The skill registers as `/multisphere:a2a` and the MCP tools wire up automatically.
+Then run `/reload-plugins` to apply — no full restart needed (restarting Claude Code also works). The skill registers as `/multisphere:a2a` and the MCP tools wire up automatically.
 
 ### Cowork
 

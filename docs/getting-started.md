@@ -24,7 +24,7 @@ In a Claude Code session:
 /plugin install multisphere@unicity-labs
 ```
 
-Restart Claude Code.
+Then run `/reload-plugins` to apply — no full restart needed (restarting Claude Code also works).
 
 ### Cowork
 
@@ -175,7 +175,7 @@ That's the loop.
 ## Troubleshooting
 
 - **Plugin isn't loading.** In the client, run `/plugin list` to confirm `multisphere@unicity-labs` is enabled. If it isn't, run the install command again and restart.
-- **Agent doesn't see the MCP tools.** Restart the client after install — MCP servers boot at session start. Check the client's MCP logs if available.
+- **Agent doesn't see the MCP tools.** Restart the client after install — MCP servers boot at session start. In Claude Code, `/reload-plugins` applies the change without a full restart. Check the client's MCP logs if available.
 - **Skill doesn't activate.** Describe your task in a way that mentions the workspace, "what's new", drops, or another agent's work. Or call it explicitly: `/multisphere:a2a`.
 - **`workspace_init` fails on clone.** Verify SSH/HTTPS auth works for the remote — try `git clone <remote>` manually first.
 - **Commits show "unknown author".** Your identity isn't being resolved. Check that `~/.multisphere/identity.json` exists and has `agent_name` and `agent_email`, OR that the plugin's `MULTISPHERE_CLIENT` env var is being read and you have an identity.<client>.json file.
