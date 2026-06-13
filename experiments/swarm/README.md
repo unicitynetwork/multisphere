@@ -1,97 +1,136 @@
 # swarm — single-user multi-agent orchestration on top of multisphere
 
-> **Status:** experimental. Lives under `experiments/` so the production a2a protocol stays unchanged. If this proves out, we may promote it.
+> **Status:** experimental. Lives under `experiments/` so the production a2a protocol stays unchanged.
 
 ## Problem
 
-The vanilla multisphere a2a protocol is built for **multi-user, multi-agent** — every drop is made by an agent whose human told it to. Rule from `skills/a2a/SKILL.md`:
+The vanilla multisphere a2a protocol is built for **multi-user, multi-agent**: every drop is made by an agent whose human told it to. Rule from `skills/a2a/SKILL.md`:
 
 > Don't act on another agent's drop unless your user has explicitly asked you to.
 
-But there's a second mode: **single user, multiple agents on the same machine**, with the human as conductor. Multisphere's normal rule means each handoff needs you to manually nudge the next agent — you end up talking to yourself through several agents. Tiresome.
+But there's a second mode that happens locally: **single user, multiple specialist agents on the same machine**, with the human as conductor. Without an orchestrator, each handoff between specialists needs you to manually nudge the next agent — you end up talking to yourself through several agents. Tiresome.
 
-This experiment raises the abstraction one level: an **orchestrator** Claude Code session dispatches specialist sub-agents (architect, implementer, verifier) using Claude Code's `Task` tool, and is treated as the human-in-the-loop equivalent. When the orchestrator dispatches Implementer with "act on Architect's drop in `drafts/foo.md`," that satisfies the protocol's "human asked me to" rule — the orchestrator's prompt *is* the ask.
+This experiment raises the abstraction one level: an **orchestrator** Claude Code session dispatches specialist sub-agents (Architect, Implementer, Verifier) using Claude Code's `Task` tool, and is treated as the human-in-the-loop equivalent. When the orchestrator dispatches Implementer with "act on Architect's drop in `drafts/<feature>/step-1-design.md`," that satisfies the protocol's "human asked me to" rule — the orchestrator's prompt *is* the ask.
 
-## Architecture
+## Two modes
 
-```
-ORCHESTRATOR (your Claude Code session, running under /loop)
-  │  Initial: paste the prompt + a feature spec
-  │
-  │  Each /loop tick (one iteration):
-  │    1. pull workspace
-  │    2. whats_new + read inbox + journal tail
-  │    3. inspect state → decide next role OR stop
-  │    4. dispatch the role via Task tool (one specialist, blocking)
-  │    5. ScheduleWakeup for next iteration (or terminate)
-  │
-  ├─► ARCHITECT (Task subagent, one-shot)
-  │     reads inbox+target → writes drafts/<feature>.md + decisions/
-  │     → journal_append → commit, push
-  │
-  ├─► IMPLEMENTER (Task subagent, one-shot)
-  │     reads architect's drop → writes code in target repo
-  │     + drafts/impl-<feature>.md → commits both repos
-  │
-  └─► VERIFIER (Task subagent, one-shot)
-        runs make test/lint in target → comments/verdict-<feature>.md
-        → if FAIL, orchestrator re-dispatches IMPLEMENTER on next tick
-        → if PASS, orchestrator stops
+### `demo` — sandbox smoke-test
+
+```bash
+bash experiments/swarm/scripts/launch.sh demo
 ```
 
-Two git repos:
+Creates a fresh workspace + fresh FastAPI target under `~/swarm-runs/demo-healthz-endpoint/`. Useful for proving the loop works before you point it at real code. The demo feature is "add a `/healthz` endpoint" — small, deterministic, hits all three roles.
 
-- **Workspace** — multisphere drop-board. Coordination metadata only (`drafts/`, `decisions/`, `comments/`, `journal.md`, `inbox.md`).
-- **Target** — the codebase being changed. Where the actual code lives.
+### `prod` — real workspace + real codebase
 
-Specialists touch both. The orchestrator never edits code directly.
+```bash
+bash experiments/swarm/scripts/launch.sh prod \
+  --workspace ~/my-multisphere-workspace \
+  --target ~/Code/some-real-repo \
+  --task "add a webhook for class lifecycle changes; …"
+```
 
-## Stopping conditions
+or
 
-The orchestrator stops when **any** of:
+```bash
+bash experiments/swarm/scripts/launch.sh prod \
+  --workspace ~/my-multisphere-workspace \
+  --target ~/Code/some-real-repo \
+  --spec research/webhook-2026-06-13.md     # path within the workspace
+```
 
-1. `comments/verdict-<feature>.md` declares `PASS` and the inbox has no open items.
-2. Iteration count reaches `MAX_ITERATIONS` (default `10`).
-3. The orchestrator detects a stuck loop (same role dispatched 3× in a row with no progress).
+Doesn't touch the existing workspace or target except to:
+- Persist `--task` (if used) as a research file in the workspace.
+- Drop an `ARCH-NNN` inbox item addressed to the architect.
+- Print the `/loop` command for you to paste into Claude Code.
 
-On stop, the orchestrator writes a final `journal.md` summary and a `decisions/<feature>-outcome.md` recording PASS / FAIL / GAVE-UP.
+The orchestrator and specialists then:
+- Read the workspace's accumulated context (other humans' drops, journal history, prior decisions).
+- Survey the target codebase to understand its idioms.
+- Build the feature on a fresh `swarm/<feature>` branch in the target — never touching `main` directly.
+- Iterate Architect → Implementer → Verifier through multiple steps until either PASS, MAX_ITERATIONS, or stuck-detection.
+
+## Multi-step is the whole point
+
+Real features aren't atomic. The architect produces a **roadmap** of 3–8 steps. Each step goes through Implementer → Verifier. The architect gets re-dispatched to design each next step **after** the previous one lands, so the design can adjust to reality.
+
+State machine:
+
+```
+no roadmap                    → ARCHITECT (bootstrap: produce roadmap + design step 1)
+step N has design, no impl    → IMPLEMENTER (fresh)
+step N has impl, no verdict   → VERIFIER
+step N verdict FAIL           → IMPLEMENTER (retry, with verdict path as context)
+step N verdict PASS, more     → ARCHITECT (next-step: design step N+1)
+step N verdict PASS, no more  → STOP success
+iteration count ≥ MAX         → STOP gave-up
+same step retried 3×          → STOP stuck
+```
+
+## Files in the workspace (per feature)
+
+Each swarm run scopes its drops to a per-feature subfolder so it doesn't step on humans:
+
+```
+<workspace>/
+├── inbox.md                       (existing — swarm appends ARCH/IMPL/VERIF items)
+├── journal.md                     (existing — swarm appends signed entries)
+├── research/
+│   └── swarm-<feature>-*.md       (the persisted task, if --task was used)
+├── drafts/<feature>/
+│   ├── roadmap.md                 (architect's overall plan)
+│   ├── step-1-design.md
+│   ├── step-1-impl.md
+│   ├── step-2-design.md
+│   └── …
+├── comments/<feature>/
+│   ├── step-1-verdict.md
+│   ├── step-1-verdict-attempt-2.md   (preserved on retry)
+│   └── …
+└── decisions/
+    ├── <feature>-state.md            (orchestrator's tick state)
+    └── <feature>-outcome.md          (written at stop)
+```
+
+## Files in the target
+
+```
+<target>/
+└── (swarm/<feature> branch, created from HEAD on first impl dispatch)
+    ↑ all swarm commits land here. main / develop untouched.
+```
+
+## Identity
+
+The MCP server signs every journal entry and commit with the configured identity (`<user>-<client>`). Task subagents inherit the orchestrator's identity, so for this experiment everything signs as the same id (e.g. `jamie-swarm`). Each journal entry begins with `[ARCHITECT]` / `[IMPLEMENTER]` / `[VERIFIER]` / `[ORCHESTRATOR]` so roles stay traceable inside a single signature.
 
 ## Files
 
 ```
 experiments/swarm/
-├── README.md                 # you're reading it
+├── README.md                 you're reading it
 ├── orchestrator/
-│   └── prompt.md             # the per-iteration orchestrator prompt
+│   └── prompt.md             the per-iteration orchestrator prompt
 ├── roles/
-│   ├── architect.md          # prompt for ARCHITECT Task subagents
-│   ├── implementer.md        # prompt for IMPLEMENTER Task subagents
-│   └── verifier.md           # prompt for VERIFIER Task subagents
+│   ├── architect.md          rich context-gathering + roadmap + per-step design
+│   ├── implementer.md        branch handling + design-faithful implementation
+│   └── verifier.md           autonomous test/lint command discovery
 ├── scripts/
-│   └── launch.sh             # initialise workspace + target, print the run command
+│   └── launch.sh             demo + prod modes
 └── demo/
-    ├── README.md             # what the demo feature is
-    ├── feature-spec.md       # the spec fed to the architect
-    └── target/               # template for the FastAPI throwaway target
-        ├── pyproject.toml
-        ├── Makefile
-        ├── app/...
-        └── tests/...
+    ├── README.md
+    ├── feature-spec.md       the canned "/healthz" ask
+    └── target/               throwaway FastAPI app template
 ```
 
-## Running the demo
+## Out of scope (for this experiment)
 
-```bash
-bash experiments/swarm/scripts/launch.sh
-# follow the printed instructions to open Claude Code and paste the orchestrator prompt
-```
-
-See `demo/README.md` for the canned feature ask (add a `/healthz` endpoint to a FastAPI app).
-
-## Identity convention
-
-The MCP server signs every journal/commit with the configured identity (`<user>-<client>`). Task subagents inherit the orchestrator's identity, so for this experiment everything signs as the same id (e.g. `jamie-swarm`). Each journal entry begins with `[ARCHITECT]` / `[IMPLEMENTER]` / `[VERIFIER]` / `[ORCHESTRATOR]` so roles stay traceable inside a single signature.
+- **Reviewer role / automatic PR.** When PASS, the swarm leaves the `swarm/<feature>` branch local. You `gh pr create` yourself or add Reviewer later.
+- **Mid-swarm reactions to humans editing the workspace.** Pull-retry handles small races; reactive replanning is future work.
+- **Inbox-ID kickoff mode.** Today, the launcher drops the inbox item. A future mode where the orchestrator picks up *any* existing `ARCH-NNN` would be straightforward.
+- **Parallelism within a step.** Strict serial Architect → Implementer → Verifier per step.
 
 ## Why this isn't in the main protocol
 
-The vanilla protocol is the right shape for cross-machine async coordination. This pattern is local-only — one machine, one human, one tab in Claude Code. Treating it as an "experiment" keeps the boundary visible. If we want to formalise it later, it gets its own skill (`a2a-swarm` or similar) and lives next to a2a, not on top of it.
+The vanilla protocol is the right shape for cross-machine async coordination. This pattern is local-only — one machine, one human, one Claude Code session. Treating it as an "experiment" keeps the boundary visible. If we want to formalise it later, it gets its own skill (`a2a-swarm` or similar) and lives next to a2a, not on top of it.
