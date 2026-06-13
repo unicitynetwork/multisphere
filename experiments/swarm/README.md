@@ -124,6 +124,34 @@ experiments/swarm/
     └── target/               throwaway FastAPI app template
 ```
 
+## Bug-fix mode (same swarm, different prompt)
+
+The same Architect / Implementer / Verifier loop runs bug fixes when launched with two extra flags:
+
+```bash
+bash experiments/swarm/scripts/launch.sh prod \
+  --workspace ~/ws \
+  --target ~/Code/some-app \
+  --task "$(cat experiments/swarm/templates/bug-fix-task.md)" \
+  --retry-budget 10 \
+  --pivot-on-exhaustion
+```
+
+Two mechanics turn this into a bug-fixer:
+
+- **`--retry-budget 10`** — each step gets up to 10 implementer/verifier retries before the orchestrator considers its approach exhausted (default for feature builds is `3`).
+- **`--pivot-on-exhaustion`** — when budget is hit, the orchestrator marks the step's approach dead (writes `comments/<feature>/step-<N>-exhausted.md`) and re-dispatches ARCHITECT in `next-step` mode to design the next hypothesis. Without this flag (the default), exhaustion still triggers `STOP stuck`.
+
+The architect, primed by the task template, structures the bootstrap roadmap as:
+
+- **Step 1** — write a failing repro test (Playwright for UI, pytest for backend).
+- **Steps 2..N+1** — one hypothesis per step, ranked by evidence.
+- **Final step** — full suite + lint + typecheck + `gh pr create`.
+
+The "don't dig deeper into the wrong branch" rule (per global CLAUDE.md) is enforced by the orchestrator's pivot mechanic: a hypothesis that doesn't converge in 10 attempts is dead, and the next iteration designs around it rather than digging further.
+
+Fill in `experiments/swarm/templates/bug-fix-task.md` and pass it via `--task`.
+
 ## Out of scope (for this experiment)
 
 - **Reviewer role / automatic PR.** When PASS, the swarm leaves the `swarm/<feature>` branch local. You `gh pr create` yourself or add Reviewer later.
