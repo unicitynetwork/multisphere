@@ -31,6 +31,8 @@ REPO_ROOT="$(cd "${SWARM_ROOT}/../.." && pwd)"
 MODE="${1:-}"; shift || true
 
 MAX_ITERATIONS=20
+RETRY_BUDGET=3
+PIVOT_ON_EXHAUSTION="false"
 SLUG=""
 WORKSPACE=""
 TARGET=""
@@ -39,13 +41,15 @@ SPEC=""
 
 while [ $# -gt 0 ]; do
     case "$1" in
-        --workspace)       WORKSPACE="$2"; shift 2 ;;
-        --target)          TARGET="$2"; shift 2 ;;
-        --task)            TASK="$2"; shift 2 ;;
-        --spec)            SPEC="$2"; shift 2 ;;
-        --slug)            SLUG="$2"; shift 2 ;;
-        --max-iterations)  MAX_ITERATIONS="$2"; shift 2 ;;
-        *)                 POSITIONAL+="$1 "; shift ;;
+        --workspace)            WORKSPACE="$2"; shift 2 ;;
+        --target)               TARGET="$2"; shift 2 ;;
+        --task)                 TASK="$2"; shift 2 ;;
+        --spec)                 SPEC="$2"; shift 2 ;;
+        --slug)                 SLUG="$2"; shift 2 ;;
+        --max-iterations)       MAX_ITERATIONS="$2"; shift 2 ;;
+        --retry-budget)         RETRY_BUDGET="$2"; shift 2 ;;
+        --pivot-on-exhaustion)  PIVOT_ON_EXHAUSTION="true"; shift ;;
+        *)                      POSITIONAL+="$1 "; shift ;;
     esac
 done
 
@@ -202,6 +206,8 @@ echo "  workspace     : ${WORKSPACE}"
 echo "  target        : ${TARGET}"
 echo "  feature slug  : ${FEATURE}"
 echo "  max iter      : ${MAX_ITERATIONS}"
+echo "  retry budget  : ${RETRY_BUDGET} (per step)"
+echo "  pivot on exh. : ${PIVOT_ON_EXHAUSTION}"
 echo "============================================================"
 echo
 echo "  workspace head : $(git -C "${WORKSPACE}" log --oneline -1)"
@@ -223,6 +229,8 @@ cat <<EOF
 - Target repo: ${TARGET}
 - Feature slug: ${FEATURE}
 - Max iterations: ${MAX_ITERATIONS}
+- Retry budget per step: ${RETRY_BUDGET}
+- Pivot on exhaustion: ${PIVOT_ON_EXHAUSTION}
 EOF
 
 echo

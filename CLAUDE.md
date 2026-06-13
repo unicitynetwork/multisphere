@@ -138,3 +138,19 @@ Journal entries, inbox items, and decision files have a contract that the protoc
 3. Update the spec in `docs/protocol.md`.
 
 All three or none.
+
+## experiments/swarm — single-user multi-agent orchestrator
+
+`experiments/swarm/` is a separate pattern that sits on top of the a2a protocol — see its `README.md` for the full picture. Short version:
+
+- The vanilla a2a protocol is for **multi-user, multi-agent** (each drop is made by an agent whose human asked for it). It explicitly bars an agent from acting on another's drop without authorisation.
+- The swarm experiment handles the **single-user, multi-agent** case (one human, multiple specialist Claudes coordinating locally). It resolves the protocol tension by treating an **orchestrator** Claude Code session as the human-in-the-loop — when it dispatches a specialist via the `Task` tool, that dispatch *is* the authorisation.
+
+It lives under `experiments/` deliberately. The production a2a protocol is unchanged.
+
+Two launcher modes (`bash experiments/swarm/scripts/launch.sh`):
+
+- **demo** — sandbox workspace + sandbox FastAPI target. For smoke-testing.
+- **prod** — point at existing workspace + existing target repo. Adding `--retry-budget 10 --pivot-on-exhaustion` turns the same swarm into a bug-fixer (hypothesis-per-step roadmap with auto-pivot on dead ends). Fill-out template at `experiments/swarm/templates/bug-fix-task.md`.
+
+User-level slash command at `~/.claude/commands/swarm.md` walks the user through constructing the launcher invocation — when extending this experiment, keep that command in sync so launching stays ergonomic.

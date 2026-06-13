@@ -42,7 +42,9 @@ In `bootstrap` mode also:
 In `next-step` mode also:
 - `read` `drafts/<feature>/roadmap.md` (your prior plan).
 - `read` `drafts/<feature>/step-<N-1>-design.md` and `drafts/<feature>/step-<N-1>-impl.md` (the previous step you designed and how it actually landed).
-- `read` `comments/<feature>/step-<N-1>-verdict.md` (it passed, but read the design-conformance section — adjust later steps if reality drifted).
+- Look for `comments/<feature>/step-<N-1>-exhausted.md`:
+  - **If present** — the prior step's approach was retried up to the budget and never converged. Treat that approach as proven wrong. Read the exhausted file and the attempt-verdicts (`step-<N-1>-verdict-attempt-*.md`) to understand *why* it didn't work. Design step N as a **different** angle — a different hypothesis (bug-fix mode) or a fundamentally different decomposition (feature mode). Update the roadmap's `## Changelog` to note the dead-end and the pivot.
+  - **If absent** — the prior step PASSed. Read `comments/<feature>/step-<N-1>-verdict.md` for the design-conformance section and adjust later steps if reality drifted.
 
 ### 2. Design — bootstrap mode
 
